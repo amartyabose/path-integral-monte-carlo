@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pimc>
+  <parameters>
+    <beta>5</beta>
+    <num_atoms>4</num_atoms>
+    <num_dimensions>3</num_dimensions>
+    <num_beads>10</num_beads>
+  </parameters>
+</pimc>
