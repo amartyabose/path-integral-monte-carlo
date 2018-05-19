@@ -71,17 +71,83 @@ struct Configuration {
     arma::mat necklace(unsigned atom_num) const {
         return positions(arma::span(atom_num), arma::span::all, arma::span::all);
     }
-    arma::mat time_view(unsigned time_ind) const {
+    arma::mat time_slice(unsigned time_ind) const {
         return positions(arma::span::all, arma::span(time_ind), arma::span::all);
     }
 };
 
-struct Moves {};
+template <typename PotFunc>
+struct Propagator {
+    PotFunc V;
+    double tau;
+    virtual double operator()(Configuration conf) = 0;
+};
+
+template <typename PotFunc>
+struct G2 : public Propagator<PotFunc> {
+    double operator()(Configuration conf) {
+        double total_pot = 0;
+        for(unsigned t=0; t<conf.num_beads(); t++)
+            total_pot += this->V(conf.time_slice(t));
+        return std::exp(total_pot * this->tau);
+    }
+};
+
+template <typename PotFunc>
+struct G4 : public Propagator<PotFunc> {
+    double operator()(Configuration conf) {
+        double total_amplitude = 1;
+        for(unsigned t=0; t<conf.num_beads(); t+=2)
+            total_amplitude *=
+                4./3. * std::exp(-this->tau/2. * this->V(conf.time_slice(t) - this->tau * this->V(conf.time_slice(t+1)) - this->tau/2. * this->V(conf.time_slice(t+2))))
+                - 1./3. * std::exp(-this->tau * (this->V(conf.time_slice(t)) + this->V(conf.time_slice(t+2))));
+        return total_amplitude;
+    }
+};
+
+template <typename PotFunc>
+struct G6 : public Propagator<PotFunc> {
+    double operator()(Configuration conf) {
+        double total_amplitude = 1;
+        for(unsigned t=0; t<conf.num_beads(); t+=4)
+            total_amplitude *=
+                64./45. * std::exp(-this->tau * (this->V(conf.time_slice(t))/2. + this->V(conf.time_slice(t+1)) + this->V(conf.time_slice(t+2)) + this->V(conf.time_slice(t+3)) + this->V(conf.time_slice(t+4))/2.))
+                - 4./9. * std::exp(-this->tau * (this->V(conf.time_slice(t)) + 2.*this->V(conf.time_slice(t+2)) + this->V(conf.time_slice(t+4))))
+                + 1./45. * std::exp(-2*this->tau * (this->V(conf.time_slice(t)) + this->V(conf.time_slice(t+4))));
+        return total_amplitude;
+    }
+};
+
+template <typename PotFunc>
+struct G8 : public Propagator<PotFunc> {
+    double operator()(Configuration conf) {
+        double total_amplitude = 1;
+        for(unsigned t=0; t<conf.num_beads(); t+=6)
+            total_amplitude *=
+                54./35. * std::exp(-this->tau * (this->V(conf.time_slice(t))/2. + this->V(conf.time_slice(t+1)) + this->V(conf.time_slice(t+2)) + this->V(conf.time_slice(t+3)) + this->V(conf.time_slice(t+4)) + this->V(conf.time_slice(t+5)) + this->V(conf.time_slice(t+6))/2.))
+                - 27./40. * std::exp(-this->tau * (this->V(conf.time_slice(t)) + 2.*this->V(conf.time_slice(t+2)) + 2.*this->V(conf.time_slice(t+4)) + this->V(conf.time_slice(t+6))))
+                + 2./15. * std::exp(-this->tau * (1.5*this->V(conf.time_slice(t)) + 3*this->V(conf.time_slice(t+3)) + 1.5*this->V(conf.time_slice(t+6))))
+                - 1./840. * std::exp(-3 * this->tau * (this->V(conf.time_slice(t)) + this->V(conf.time_slice(t+6))));
+        return total_amplitude;
+    }
+};
+
+struct Moves {
+    virtual Configuration operator()(Configuration conf, unsigned atom_num) = 0;
+};
 
 struct Translate : Moves {
-    Configuration operator()(Configuration conf, unsigned atom_num, arma::vec dr) {
+    arma::mat max_step;
+    Translate(Parameters param) {
+        max_step = arma::ones<arma::mat>(param.natoms, param.ndimensions);
+    }
+    virtual Configuration operator()(Configuration conf, unsigned atom_num) {
+        arma::vec step(max_step.n_cols);
+        for(unsigned i=0; i<max_step.n_cols; i++)
+            step(i) = random_float(-1,1) * max_step(atom_num, i);
+
         for(unsigned time_ind=0; time_ind < conf.positions.n_cols; time_ind++)
-            conf.positions.tube(atom_num, time_ind) += dr;
+            conf.positions.tube(atom_num, time_ind) += step;
         return conf;
     }
 };
@@ -93,7 +159,7 @@ struct BrownianBridge : Moves {
         num_beads_moved = nbeads_move;
         tau = param.beta/param.nbeads;
     }
-    Configuration operator()(Configuration conf, unsigned atom_num) {
+    virtual Configuration operator()(Configuration conf, unsigned atom_num) {
         unsigned nbeads = conf.num_beads();
         unsigned start = random_integer(0, nbeads);
         unsigned end = (start + num_beads_moved + 1) % nbeads;
@@ -117,5 +183,9 @@ int main(int argc, char **argv) {
     BrownianBridge bb(5, params);
     arma::mat necklacebb = bb(c, 0).necklace(0);
     (necklace0 - necklacebb).print("change?");
+    Translate translate(params);
+    translate(c, 0);
+    arma::mat necklace_trans = translate(c, 0).necklace(0);
+    (necklace0 - necklace_trans).print("change?");
     return 0;
 }
