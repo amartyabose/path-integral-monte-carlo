@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <pimc>
   <parameters>
-    <beta>5</beta>
-    <num_atoms>4</num_atoms>
-    <num_dimensions>3</num_dimensions>
-    <num_beads>10</num_beads>
+    <beta>2</beta>
+    <num_atoms>1</num_atoms>
+    <num_dimensions>1</num_dimensions>
+    <num_beads>13</num_beads>
+    <num_MC>1000000</num_MC>
+    <num_blocks>10</num_blocks>
+    <num_brownian_bridge>10</num_brownian_bridge>
+    <num_translate_length>2</num_translate_length>
   </parameters>
+  <propagator>2</propagator>
 </pimc>
