@@ -35,7 +35,9 @@ inline double random_normal(double mean, double sigma) {
 struct Parameters {
     unsigned ndimensions, natoms, nbeads;
     double beta;
-    unsigned nBrownianBridge, nTranslateLength;
+    unsigned nBrownianBridge, lBrownianBridge; 
+    double nTranslateLength;
+    
     unsigned nMC, nblocks;
     unsigned prop_level;
     void load(const char *fname) {
@@ -48,7 +50,8 @@ struct Parameters {
                 ndimensions = v.second.get<unsigned>("num_dimensions");
                 natoms = v.second.get<unsigned>("num_atoms");
                 nbeads = v.second.get<unsigned>("num_beads");
-                nBrownianBridge = v.second.get<unsigned>("num_brownian_bridge");
+                lBrownianBridge = v.second.get<unsigned>("brownian_bridge_length");
+                nBrownianBridge = v.second.get<unsigned>("brownian_bridge_attempts");
                 nTranslateLength = v.second.get<double>("num_translate_length");
                 nMC = v.second.get<unsigned>("num_MC");
                 nblocks = v.second.get<unsigned>("num_blocks");
@@ -185,10 +188,17 @@ struct Translate : Moves {
 
 struct BrownianBridge : Moves {
     unsigned num_beads_moved;
+    unsigned num_attempts;
     double tau;
     BrownianBridge(Parameters param) {
-        num_beads_moved = param.nBrownianBridge;
+        num_beads_moved = param.lBrownianBridge;
         tau = param.beta/param.nbeads;
+	num_attempts = param.nBrownianBridge;
+	/*****************************************************
+		JUST ADDED THE VARIABLE, TAKE THIS ALSO INTO ACCOUNT WHEN REDESIGNING THE MOVES.
+		YOU DONT JUST DO ONE B.B., YOU TRY AS MANY AS YOU NEED TO RECONFIGURE ON AVERAGE 
+		50% OF THE POLYMER
+	*******************************************************/
     }
     virtual Configuration operator()(Configuration conf, unsigned atom_num) {
         unsigned nbeads = conf.num_beads();
@@ -197,7 +207,8 @@ struct BrownianBridge : Moves {
         for(unsigned b = (start+1)%nbeads, nmoved=0; nmoved < num_beads_moved; b = (b+1)%nbeads, nmoved++) {
             unsigned L = num_beads_moved - nmoved + 1;
             for(unsigned d=0; d<conf.num_dims(); d++) {
-                conf.positions(atom_num, b, d) = random_normal((conf.positions(atom_num, (nbeads+b-1)%nbeads, d) + (L-1.)*conf.positions(atom_num, end, d))/L, std::sqrt((L-1.)/L*tau));
+                //conf.positions(atom_num, b, d) = random_normal((conf.positions(atom_num, (nbeads+b-1)%nbeads, d) + (L-1.)*conf.positions(atom_num, end, d))/L, std::sqrt((L-1.)/L*tau));
+		conf.positions(atom_num, b, d) = random_normal(((L-1.)*conf.positions(atom_num, (nbeads+b-1)%nbeads, d) + conf.positions(atom_num, end, d))/L, std::sqrt((L-1.)/L*tau));
             }
         }
         return conf;
@@ -211,7 +222,7 @@ int main(int argc, char **argv) {
     }
     params.load(argv[1]);
     Configuration c(params);
-    HarmonicOscillator osc(2);
+    HarmonicOscillator osc(1.0);
     shared_ptr<Propagator<HarmonicOscillator> > mep;
     switch(params.prop_level) {
     case 2:
@@ -235,22 +246,36 @@ int main(int argc, char **argv) {
     moves.push_back(shared_ptr<Moves>(new BrownianBridge(params)));
     std::ofstream ofs("test");
     arma::vec moves_accepted = arma::zeros<arma::vec>(moves.size());
+    arma::vec moves_tried = arma::zeros<arma::vec>(moves.size());
     arma::vec xsq = arma::zeros<arma::vec>(params.nblocks);
     for(unsigned b=0; b<params.nblocks; b++)
         for(unsigned i=0; i<params.nMC/params.nblocks; i++) {
             for(unsigned m=0; m<moves.size(); m++)
                 for(unsigned atom=0; atom<c.num_atoms(); atom++) {
-                    Configuration cnew = (*moves[m])(c, atom);
-                    if((*mep)(cnew)/(*mep)(c)>random_float(0,1)) {
-                        c = cnew;
-                        moves_accepted(m)++;
-                    }
-                }
+                    
+		    // OF COURSE THIS HORROR IS TEMPORARY
+		    unsigned nmax=1;
+		    if(m==1)
+		        nmax=params.nBrownianBridge;
+		    
+		    for(unsigned nmv=0;nmv<nmax;nmv++)
+		    {
+		        Configuration cnew = (*moves[m])(c, atom);
+			moves_tried(m)++;
+                        if((*mep)(cnew)/(*mep)(c)>random_float(0,1)) {
+                            c = cnew;
+                            moves_accepted(m)++;
+			}
+                     }
+		  }
+                
             xsq(b) += c.time_slice(0)(0)*c.time_slice(0)(0);
             ofs<<c.time_slice(0).st()<<std::endl;
         }
     xsq /= params.nMC/params.nblocks;
     std::cout<<arma::mean(xsq)<<'\t'<<arma::stddev(xsq)<<std::endl;
-    (moves_accepted/params.nMC).print("Fraction of moves accepted");
+    (moves_accepted/moves_tried).print("Fraction of moves accepted");  
+    // BAD IDEA, BETTER TO KEEP TRACK OF THE TOTAL MOVES
+    // SOMETIMES YOU DON'T KNOW EXACTLY HOW MANY MOVES YOU WILL TRY
     return 0;
 }
