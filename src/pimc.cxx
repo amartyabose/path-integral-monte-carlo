@@ -12,7 +12,9 @@ using std::string;
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/foreach.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/algorithm/string.hpp>
 namespace bRand = boost::random;
 namespace pt = boost::property_tree;
 using boost::shared_ptr;
@@ -72,6 +74,37 @@ struct HarmonicOscillator : public Potential {
     HarmonicOscillator(double w) : omega(w) {}
     double operator()(arma::mat x) {
         return 0.5 * omega * omega * arma::accu(x % x);
+    }
+};
+
+struct PolynomialPotential : public Potential {
+    vector<double> coeffs;
+    PolynomialPotential() {}
+    PolynomialPotential(vector<double> c) : coeffs(c) {}
+    double operator()(arma::mat x) {
+        double pe = 0;
+        arma::mat temp = arma::ones<arma::mat>(arma::size(x));
+        for(unsigned i=0; i<coeffs.size(); i++) {
+            pe += coeffs[i] * arma::accu(temp);
+            temp = temp % x;
+        }
+        return pe;
+    }
+};
+
+struct LennardJones : public Potential {
+    double rmin, epsilon;
+    LennardJones() {}
+    LennardJones(double rm, double eps) : rmin(rm), epsilon(eps) {}
+    double operator()(arma::mat x) {
+        double pe = 0;
+        for(unsigned i=0; i<x.n_rows; i++)
+            for(unsigned j=0; j<i; j++) {
+                double dist = arma::norm(x.row(i) - x.row(j), 2);
+                double rmin_over_dist_6 = std::pow(rmin/dist, 6.);
+                pe += epsilon * rmin_over_dist_6 * (rmin_over_dist_6 - 2.);
+            }
+        return pe;
     }
 };
 
@@ -207,6 +240,19 @@ struct BrownianBridge : Moves {
     }
 };
 
+struct Estimator {
+    virtual double operator() (arma::mat x) = 0;
+};
+
+struct PE_estimator : public Estimator {
+    shared_ptr<Potential> pot;
+    PE_estimator() {}
+    PE_estimator(shared_ptr<Potential> V) : pot(V) {}
+    double operator()(arma::mat x) {
+        return (*pot)(x);
+    }
+};
+
 class Simulation {
     unsigned ndimensions, natoms, nbeads;
     double beta;
@@ -218,6 +264,8 @@ class Simulation {
     shared_ptr<Potential> pot;
     shared_ptr<Propagator> propagator;
 
+    shared_ptr<Estimator> estimator;
+
     virtual void get_parameters(pt::ptree params) {
         beta = params.get<double>("beta");
         ndimensions = params.get<unsigned>("num_dimensions");
@@ -228,8 +276,48 @@ class Simulation {
         nMC = params.get<unsigned>("num_MC");
         nblocks = params.get<unsigned>("num_blocks");
     }
+    virtual void get_system(pt::ptree sys) {
+        get_potential(sys.get_child("potential"));
+        if(sys.get<string>("estimator") == "potential")
+            estimator = shared_ptr<Estimator>(new PE_estimator(pot));
+    }
+    virtual void get_potential(pt::ptree pot) {
+        if(pot.get<string>("<xmlattr>.type")=="1D")
+            create_oneD_pot(pot);
+        else if(pot.get<string>("<xmlattr>.type")=="pair_wise")
+            create_pairwise_pot(pot);
+    }
+    void create_oneD_pot(pt::ptree pot) {
+        BOOST_FOREACH(const pt::ptree::value_type &p, pot) {
+            process_pot(p);
+        }
+    }
+    virtual void process_pot(pt::ptree::value_type p) {
+        if(p.first == "harmonic")
+            pot = shared_ptr<Potential>(new HarmonicOscillator(p.second.get<double>("frequency")));
+        else if(p.first == "polynomial") {
+            string coeffs = p.second.get<string>("coeffs");
+            vector<string> coeff_vec;
+            boost::split(coeff_vec, coeffs,boost::is_any_of("\t "));
+            vector<double> coeffs_double;
+            for(unsigned i=0; i<coeff_vec.size(); i++)
+                coeffs_double.push_back(boost::lexical_cast<double>(coeff_vec[i]));
+            pot = shared_ptr<Potential>(new PolynomialPotential(coeffs_double));
+        }
+    }
+    void create_pairwise_pot(pt::ptree pot) {
+        BOOST_FOREACH(const pt::ptree::value_type &p, pot) {
+            process_pairwise_pot(p);
+        }
+    }
+    void process_pairwise_pot(pt::ptree::value_type p) {
+        if(p.first == "lennard-jones") {
+            double rmin = p.second.get<double>("rmin");
+            double epsilon = p.second.get<double>("epsilon");
+            pot = shared_ptr<Potential>(new LennardJones(rmin, epsilon));
+        }
+    }
     virtual void get_propagator(pt::ptree prop) {
-        pot = shared_ptr<Potential>(new HarmonicOscillator(1.0));
         switch(prop.get<unsigned>("order")) {
         case 2:
             propagator = shared_ptr<Propagator>(new G2(pot, beta/nbeads));
@@ -271,6 +359,7 @@ public:
         read_xml(fname, tree);
         get_parameters(tree.get_child("pimc.parameters"));
         get_MC_params(tree.get_child("pimc.monte_carlo"));
+        get_system(tree.get_child("pimc.system"));
         get_propagator(tree.get_child("pimc.propagator"));
         get_moves(tree.get_child("pimc.moves"));
     }
@@ -279,17 +368,19 @@ public:
         std::ofstream ofs("test");
         arma::vec moves_accepted = arma::zeros<arma::vec>(moves.size());
         arma::vec moves_tried = arma::zeros<arma::vec>(moves.size());
-        arma::vec xsq = arma::zeros<arma::vec>(nblocks);
+        arma::vec est = arma::zeros<arma::vec>(nblocks);
         arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms-1);
         for(unsigned b=0; b<nblocks; b++)
             for(unsigned i=0; i<nMC/nblocks; i++) {
                 for(unsigned m=0; m<moves.size(); m++)
                     c = (*moves[m])(c, atoms);
-                xsq(b) += c.time_slice(0)(0)*c.time_slice(0)(0);
-                ofs<<c.time_slice(0).st()<<std::endl;
+                //xsq(b) += c.time_slice(0)(0)*c.time_slice(0)(0);
+                //ofs<<c.time_slice(0).st()<<std::endl;
+                est(b) += (*estimator)(c.time_slice(0));
+                ofs<<(*estimator)(c.time_slice(0))<<std::endl;
             }
-        xsq /= nMC/nblocks;
-        std::cout<<arma::mean(xsq)<<'\t'<<arma::stddev(xsq)<<std::endl;
+        est /= nMC/nblocks;
+        std::cout<<arma::mean(est)<<'\t'<<arma::stddev(est)<<std::endl;
         std::cout<<"Fraction of moves accepted: \n";
         for(unsigned m=0; m<move_names.size(); m++)
             std::cout<<move_names[m]<<'\t'<<(double)moves[m]->moves_accepted/moves[m]->moves_tried<<std::endl;
