@@ -1,2 +1,4 @@
 bin
 build
+release
+debug
