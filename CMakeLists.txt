@@ -22,5 +22,6 @@ set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -g")
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
 
 include_directories(${Boost_INCLUDE_DIRS} ${Armadillo_INCLUDE_DIRS})
-add_executable(pimc ${PROJECT_SOURCE_DIR}/pimc.cxx)
+file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/*.cpp)
+add_executable(pimc ${SOURCES})
 target_link_libraries(pimc ${Boost_LIBRARIES} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})

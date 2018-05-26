@@ -1,33 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <pimc>
   <parameters>
-    <beta>10</beta>
-    <num_atoms>20</num_atoms>
+    <beta>40</beta>
+    <num_atoms>1</num_atoms>
     <num_dimensions>1</num_dimensions>
-    <num_beads>20</num_beads>
+    <num_beads>40</num_beads>
   </parameters>
   <system>
-    <potential type = "1D">
-      <!--<polynomial>
-          <coeffs>0 0 0.5 -0.5 0.5</coeffs>
-          </polynomial>-->
-      <harmonic>
-        <frequency>1</frequency>
-      </harmonic>
+    <!--<potential name = "HarmonicOscillator">
+      <frequency>1</frequency>
+    </potential>-->
+    <potential name = "PolynomialPotential">
+      <coeffs>0 0 0.5</coeffs>
     </potential>
     <estimator>potential</estimator>
   </system>
-  <propagator>
-    <order>6</order>
-  </propagator>
+  <propagator name="G2" />
   <moves>
-    <translation>
+    <Translate>
       <length>0.75</length>
-    </translation>
-    <brownian_bridge>
-      <length>8</length>
-      <attempts>5</attempts>
-    </brownian_bridge>
+    </Translate>
+    <BrownianBridge>
+      <length>5</length>
+      <attempts>2</attempts>
+    </BrownianBridge>
   </moves>
   <monte_carlo>
     <num_MC>1000000</num_MC>
