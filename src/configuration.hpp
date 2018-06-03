@@ -15,6 +15,7 @@ class Configuration {
 public:
     Configuration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums);
     void augmented_set(unsigned atom_num, unsigned time_ind, unsigned dim, double value);
+    void shift(unsigned atom_num, arma::vec shift_amt);
     unsigned num_dims() const;
     unsigned num_beads(unsigned atom_num) const;
     unsigned num_atoms() const;

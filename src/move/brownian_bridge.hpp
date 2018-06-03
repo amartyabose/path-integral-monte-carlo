@@ -8,7 +8,7 @@
 class BrownianBridge : public Move {
     unsigned num_beads_moved;
     unsigned num_attempts;
-    double beta, tau;
+    double beta, mass;
     double get_temp(unsigned bead_num) {
         double temp = 0;
         unsigned beads_counted = 0;
@@ -23,8 +23,8 @@ public:
     void setup(pt::ptree::value_type node, pt::ptree params) {
         num_beads_moved = node.second.get<unsigned>("length");
         num_attempts = node.second.get<unsigned>("attempts");
-        beta = params.get<double>("beta");//params.get<unsigned>("num_propagators");
-        tau = params.get<double>("beta")/params.get<unsigned>("num_propagators");
+        beta = params.get<double>("beta");
+        mass = params.get<double>("mass", 1);
     }
 
     Configuration operator()(Configuration conf, arma::uvec atom_nums) {
@@ -44,6 +44,8 @@ public:
                         new_to_end = taue + (beta - tau1);
                     if(start_to_new<0)
                         start_to_new = tau1 + (beta - tau0);
+                    start_to_new /= mass;
+                    new_to_end /= mass;
                     double start_to_end = start_to_new + new_to_end;
 
                     for(unsigned d=0; d<conf.num_dims(); d++)

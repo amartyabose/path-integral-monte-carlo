@@ -17,6 +17,8 @@ using std::string;
 namespace pt = boost::property_tree;
 using boost::shared_ptr;
 
+#include <mpi.h>
+
 #include "random.hpp"
 #include "potentials.hpp"
 #include "moves.hpp"
@@ -37,8 +39,10 @@ struct PE_estimator : public Estimator {
 };
 
 class Simulation {
+    int my_id, world_size;
+
     unsigned ndimensions, natoms, nprops;
-    double beta;
+    double beta, mass;
 
     vector<shared_ptr<Move> > moves;
     vector<string> move_names;
@@ -55,6 +59,7 @@ class Simulation {
         ndimensions = params.get<unsigned>("num_dimensions");
         natoms = params.get<unsigned>("num_atoms");
         nprops = params.get<unsigned>("num_propagators");
+        mass = params.get<double>("mass", 1);
     }
 
     virtual void get_MC_params(pt::ptree params) {
@@ -85,7 +90,9 @@ class Simulation {
                 undetermined_dt += p.second.get<double>("<xmlattr>.number");
         }
         if (std::abs(total_temp_accounted_for - beta)>1e-10 && undetermined_dt==0) {
-            std::cerr<<"Full beta not accounted for in propagators"<<std::endl;
+            if (!my_id)
+                std::cerr<<"Full beta not accounted for in propagators"<<std::endl;
+            MPI_Finalize();
             exit(1);
         }
         double rem_dt = (beta - total_temp_accounted_for)/undetermined_dt;
@@ -112,10 +119,13 @@ class Simulation {
         }
 
         if(props.size() != nprops) {
-            std::cerr<<"Number of propagators in <parameters> and <propagators> do not match"<<std::endl;
+            if (!my_id)
+                std::cerr<<"Number of propagators in <parameters> and <propagators> do not match"<<std::endl;
+            MPI_Finalize();
             exit(1);
         }
-        std::cout<<"Total number of beads: "<<bead_nums.back()+1<<std::endl;
+        if (!my_id)
+            std::cout<<"Total number of beads: "<<bead_nums.back()+1<<std::endl;
     }
 
     void get_moves(pt::ptree move_params, pt::ptree params) {
@@ -128,6 +138,11 @@ class Simulation {
     }
 
 public:
+    Simulation(int myid, int ws) {
+        my_id = myid;
+        world_size = ws;
+    }
+
     void load(const char *fname) {
         pt::ptree tree;
         read_xml(fname, tree);
@@ -140,42 +155,56 @@ public:
 
     void run_MC() {
         Configuration c(natoms, ndimensions, bead_nums);
-        std::ofstream ofs("test");
+        std::ofstream ofs("test_" + boost::lexical_cast<string>(my_id));
         arma::vec moves_accepted = arma::zeros<arma::vec>(moves.size());
         arma::vec moves_tried = arma::zeros<arma::vec>(moves.size());
         arma::vec est = arma::zeros<arma::vec>(nblocks);
-        arma::vec xsq = arma::zeros<arma::vec>(nblocks);
         arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms-1);
         for(unsigned b=0; b<nblocks; b++)
-            for(unsigned i=0; i<nMC/nblocks; i++) {
+            for(unsigned i=0; i<nMC/(world_size * nblocks); i++) {
                 for(unsigned m=0; m<moves.size(); m++) {
                     //std::cout<<"Doing move: "<<move_names[m]<<std::endl;
                     c = (*moves[m])(c, atoms);
                     //std::cout<<"Move done: "<<move_names[m]<<std::endl;
                 }
-                xsq(b) += c.time_slice(0)(0)*c.time_slice(0)(0);
-                //ofs<<c.time_slice(0).st()<<std::endl;
+                ofs<<c.time_slice(0).st();
                 est(b) += (*estimator)(c.time_slice(0));
-                ofs<<(*estimator)(c.time_slice(0))<<std::endl;
             }
-        est /= nMC/nblocks;
-        xsq /= nMC/nblocks;
-        std::cout<<arma::mean(est)<<'\t'<<arma::stddev(est)<<std::endl;
-        std::cout<<arma::mean(xsq)<<'\t'<<arma::stddev(xsq)<<std::endl;
-        std::cout<<"\nFraction of moves accepted: \n";
-        for(unsigned m=0; m<move_names.size(); m++)
-            std::cout<<move_names[m]<<'\t'<<(double)moves[m]->moves_accepted/moves[m]->moves_tried<<std::endl;
+        est /= nMC/(world_size * nblocks);
+        //std::cout<<arma::mean(est)<<'\t'<<arma::stddev(est)<<std::endl;
+        //std::cout<<arma::mean(xsq)<<'\t'<<arma::stddev(xsq)<<std::endl;
+        //std::cout<<"\nFraction of moves accepted: \n";
+        //for(unsigned m=0; m<move_names.size(); m++)
+        //    std::cout<<move_names[m]<<'\t'<<(double)moves[m]->moves_accepted/moves[m]->moves_tried<<std::endl;
+
+        arma::vec est_global = arma::zeros<arma::vec>(nblocks);
+        MPI_Reduce(est.memptr(), est_global.memptr(), nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        est_global /= world_size;
+        if(!my_id) {
+            std::cout<<arma::mean(est_global)<<'\t'<<arma::stddev(est_global)<<std::endl;
+        }
     }
 };
 
-
 int main(int argc, char **argv) {
+    MPI_Init(&argc, &argv);
+    int my_id, world_size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    generator.seed(static_cast<unsigned>(my_id) + 213);
+
     if(argc<2) {
-        std::cerr<<"Need an XML parameter file!"<<std::endl;
+        if (!my_id)
+            std::cerr<<"Need an XML parameter file!"<<std::endl;
+        MPI_Finalize();
         exit(1);
     }
-    Simulation sim;
+
+    Simulation sim(my_id, world_size);
     sim.load(argv[1]);
     sim.run_MC();
+
+    MPI_Finalize();
     return 0;
 }

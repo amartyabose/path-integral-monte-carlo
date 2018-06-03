@@ -25,3 +25,7 @@ include_directories(${Boost_INCLUDE_DIRS} ${Armadillo_INCLUDE_DIRS})
 file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/*.cpp)
 add_executable(pimc ${SOURCES})
 target_link_libraries(pimc ${Boost_LIBRARIES} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+
+find_package(MPI REQUIRED)
+include_directories(${MPI_INCLUDE_PATH})
+target_link_libraries(pimc ${MPI_LIBRARIES})

@@ -5,6 +5,7 @@
     <num_atoms>1</num_atoms>
     <num_dimensions>1</num_dimensions>
     <num_propagators>12</num_propagators>
+    <mass>1</mass>
   </parameters>
   <system>
     <potential name = "HarmonicOscillator">
@@ -25,12 +26,12 @@
       <length>0.75</length>
     </Translate>
     <BrownianBridge>
-      <length>5</length>
-      <attempts>1</attempts>
+      <length>6</length>
+      <attempts>2</attempts>
     </BrownianBridge>
   </moves>
   <monte_carlo>
-    <num_MC>1000000</num_MC>
+    <num_MC>4000000</num_MC>
     <num_blocks>10</num_blocks>
   </monte_carlo>
 </pimc>
