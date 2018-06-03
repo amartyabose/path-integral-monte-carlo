@@ -8,14 +8,13 @@
 
 class G6 : public Propagator {
 public:
-    double operator()(Configuration conf) {
+    G6() { num_total_beads = 5; }
+    double operator()(const arma::cube &conf) {
         double total_amplitude = 1;
-        for(unsigned t=0; t<conf.num_beads()-3; t+=4) {
-            total_amplitude *=
-                64./45. * std::exp(-tau * ((*V)(conf.time_slice(t))/2. + (*V)(conf.time_slice(t+1)) + (*V)(conf.time_slice(t+2)) + (*V)(conf.time_slice(t+3)) + (*V)(conf.time_slice((t+4)%conf.num_beads()))/2.))
-                - 4./9. * std::exp(-tau * ((*V)(conf.time_slice(t)) + 2.*(*V)(conf.time_slice(t+2)) + (*V)(conf.time_slice((t+4)%conf.num_beads()))))
-                + 1./45. * std::exp(-2*tau * ((*V)(conf.time_slice(t)) + (*V)(conf.time_slice((t+4)%conf.num_beads()))));
-        }
+        total_amplitude *=
+            64./45. * std::exp(-tau * ((*V)(conf(arma::span::all, arma::span(0), arma::span::all))/2. + (*V)(conf(arma::span::all, arma::span(1), arma::span::all)) + (*V)(conf(arma::span::all, arma::span(2), arma::span::all)) + (*V)(conf(arma::span::all, arma::span(3), arma::span::all)) + (*V)(conf(arma::span::all, arma::span(4), arma::span::all))/2.))
+            - 4./9. * std::exp(-tau * ((*V)(conf(arma::span::all, arma::span(0), arma::span::all)) + 2.*(*V)(conf(arma::span::all, arma::span(2), arma::span::all)) + (*V)(conf(arma::span::all, arma::span(4), arma::span::all))))
+            + 1./45. * std::exp(-2*tau * ((*V)(conf(arma::span::all, arma::span(0), arma::span::all)) + (*V)(conf(arma::span::all, arma::span(4), arma::span::all))));
         return total_amplitude;
     }
 };

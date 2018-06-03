@@ -19,8 +19,11 @@ public:
                 step(i) = random_float(-1,1) * max_step(atom_nums(atom), i);
 
             Configuration conf_new = conf;
-            for(unsigned time_ind=0; time_ind < conf.positions.n_cols; time_ind++)
-                conf_new.positions.tube(atom_nums(atom), time_ind) += step;
+            for(unsigned time_ind=0; time_ind < conf.num_beads(atom); time_ind++)
+                for(unsigned d=0; d<max_step.n_cols; d++)
+                    //conf_new.positions.tube(atom_nums(atom), time_ind) += step;
+                    conf_new.augmented_set(atom_nums(atom), time_ind, d,
+                                           conf_new.augmented_bead_position(atom_nums(atom), time_ind, d) + step(d));
 
             check_amplitude(conf, conf_new);
         }

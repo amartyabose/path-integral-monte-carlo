@@ -18,10 +18,10 @@ namespace pt = boost::property_tree;
 using boost::shared_ptr;
 
 #include "random.hpp"
-#include "configuration.hpp"
 #include "potentials.hpp"
-#include "propagators.hpp"
 #include "moves.hpp"
+#include "propagators.hpp"
+#include "configuration.hpp"
 
 struct Estimator {
     virtual double operator() (arma::mat x) = 0;
@@ -37,7 +37,7 @@ struct PE_estimator : public Estimator {
 };
 
 class Simulation {
-    unsigned ndimensions, natoms, nbeads;
+    unsigned ndimensions, natoms, nprops;
     double beta;
 
     vector<shared_ptr<Move> > moves;
@@ -45,7 +45,8 @@ class Simulation {
 
     unsigned nMC, nblocks;
     shared_ptr<Potential> pot;
-    shared_ptr<Propagator> propagator;
+    std::vector<boost::shared_ptr<Propagator> > props;
+    std::vector<unsigned> bead_nums;
 
     shared_ptr<Estimator> estimator;
 
@@ -53,7 +54,7 @@ class Simulation {
         beta = params.get<double>("beta");
         ndimensions = params.get<unsigned>("num_dimensions");
         natoms = params.get<unsigned>("num_atoms");
-        nbeads = params.get<unsigned>("num_beads");
+        nprops = params.get<unsigned>("num_propagators");
     }
 
     virtual void get_MC_params(pt::ptree params) {
@@ -72,17 +73,56 @@ class Simulation {
         pot->setup(pot_tree);
     }
 
+    std::vector<double> get_dts(pt::ptree prop) {
+        //calculate the respective dt's
+        std::vector<double> dt;
+        double total_temp_accounted_for = 0;
+        unsigned undetermined_dt = 0;
+        BOOST_FOREACH(const pt::ptree::value_type &p, prop) {
+            dt.push_back(p.second.get<double>("<xmlattr>.dt", 0));
+            total_temp_accounted_for += dt.back();
+            if (dt.back()<1e-10)
+                undetermined_dt += p.second.get<double>("<xmlattr>.number");
+        }
+        if (std::abs(total_temp_accounted_for - beta)>1e-10 && undetermined_dt==0) {
+            std::cerr<<"Full beta not accounted for in propagators"<<std::endl;
+            exit(1);
+        }
+        double rem_dt = (beta - total_temp_accounted_for)/undetermined_dt;
+        for(unsigned i=0; i<dt.size(); i++)
+            if (dt[i]<1e-10)
+                dt[i] = rem_dt;
+        return dt;
+    }
+
     void get_propagator(pt::ptree prop) {
-        propagator = Propagator::create(prop.get<string>("<xmlattr>.name"));
-        propagator->V = pot;
-        propagator->tau = beta/nbeads;
+        std::vector<double> dt = get_dts(prop);
+        bead_nums.push_back(0);
+        unsigned prop_num = 0;
+        BOOST_FOREACH(const pt::ptree::value_type &p, prop) {
+            props.push_back(Propagator::create(p.second.get<string>("<xmlattr>.name")));
+            props.back()->set_params(pot, dt[prop_num]);
+            prop_num++;
+            bead_nums.push_back(bead_nums.back() + props.back()->total_beads() - 1);
+            unsigned n_props = p.second.get<unsigned>("<xmlattr>.number");
+            for (unsigned i=1; i<n_props; i++) {
+                props.push_back(props.back());
+                bead_nums.push_back(bead_nums.back() + props.back()->total_beads() - 1);
+            }
+        }
+
+        if(props.size() != nprops) {
+            std::cerr<<"Number of propagators in <parameters> and <propagators> do not match"<<std::endl;
+            exit(1);
+        }
+        std::cout<<"Total number of beads: "<<bead_nums.back()+1<<std::endl;
     }
 
     void get_moves(pt::ptree move_params, pt::ptree params) {
         BOOST_FOREACH(const pt::ptree::value_type &m, move_params) {
             moves.push_back(Move::create(m.first));
             moves.back()->setup(m, params);
-            moves.back()->propagator = propagator;
+            moves.back()->propagator = props;
             move_names.push_back(m.first);
         }
     }
@@ -94,12 +134,12 @@ public:
         get_parameters(tree.get_child("pimc.parameters"));
         get_MC_params(tree.get_child("pimc.monte_carlo"));
         get_system(tree.get_child("pimc.system"));
-        get_propagator(tree.get_child("pimc.propagator"));
+        get_propagator(tree.get_child("pimc.propagators"));
         get_moves(tree.get_child("pimc.moves"), tree.get_child("pimc.parameters"));
     }
 
     void run_MC() {
-        Configuration c(natoms, nbeads, ndimensions);
+        Configuration c(natoms, ndimensions, bead_nums);
         std::ofstream ofs("test");
         arma::vec moves_accepted = arma::zeros<arma::vec>(moves.size());
         arma::vec moves_tried = arma::zeros<arma::vec>(moves.size());
@@ -108,8 +148,11 @@ public:
         arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms-1);
         for(unsigned b=0; b<nblocks; b++)
             for(unsigned i=0; i<nMC/nblocks; i++) {
-                for(unsigned m=0; m<moves.size(); m++)
+                for(unsigned m=0; m<moves.size(); m++) {
+                    //std::cout<<"Doing move: "<<move_names[m]<<std::endl;
                     c = (*moves[m])(c, atoms);
+                    //std::cout<<"Move done: "<<move_names[m]<<std::endl;
+                }
                 xsq(b) += c.time_slice(0)(0)*c.time_slice(0)(0);
                 //ofs<<c.time_slice(0).st()<<std::endl;
                 est(b) += (*estimator)(c.time_slice(0));

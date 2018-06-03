@@ -4,25 +4,29 @@
     <beta>40</beta>
     <num_atoms>1</num_atoms>
     <num_dimensions>1</num_dimensions>
-    <num_beads>40</num_beads>
+    <num_propagators>12</num_propagators>
   </parameters>
   <system>
-    <!--<potential name = "HarmonicOscillator">
+    <potential name = "HarmonicOscillator">
       <frequency>1</frequency>
-    </potential>-->
-    <potential name = "PolynomialPotential">
-      <coeffs>0 0 0.5</coeffs>
     </potential>
+    <!--<potential name = "PolynomialPotential">
+      <coeffs>0 0 0.5</coeffs>
+    </potential>-->
     <estimator>potential</estimator>
   </system>
-  <propagator name="G2" />
+  <propagators>
+    <propagator name="G2" number="1" dt="0.1"/>
+    <propagator name="G6" number="10"/>
+    <propagator name="G2" number="1" dt="0.1"/>
+  </propagators>
   <moves>
     <Translate>
       <length>0.75</length>
     </Translate>
     <BrownianBridge>
       <length>5</length>
-      <attempts>2</attempts>
+      <attempts>1</attempts>
     </BrownianBridge>
   </moves>
   <monte_carlo>

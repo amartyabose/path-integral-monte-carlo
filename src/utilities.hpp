@@ -8,7 +8,7 @@
             type::registerType(#klass, this);                            \
         }                                                                \
         virtual type* create() {                                         \
-            return new klass();                                           \
+            return new klass();                                          \
         }                                                                \
     };                                                                   \
     static klass##Factory global_##klass##Factory;

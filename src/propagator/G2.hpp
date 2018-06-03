@@ -8,11 +8,10 @@
 
 class G2 : public Propagator {
 public:
-    double operator()(Configuration conf) {
-        double total_pot = 0;
-        for(unsigned t=0; t<conf.num_beads(); t++)
-            total_pot += (*V)(conf.time_slice(t));
-        return std::exp(-total_pot * tau);
+    G2() { num_total_beads = 2; }
+    double operator()(const arma::cube &conf) {
+        double total_amplitude = - tau/2. * ((*V)(conf(arma::span::all, arma::span(0), arma::span::all)) + (*V)(conf(arma::span::all, arma::span(1), arma::span::all)));
+        return std::exp(total_amplitude);
     }
 };
 

@@ -15,22 +15,28 @@ struct PropagatorFactory {
 };
 
 class Propagator {
-    static std::map<std::string, PropagatorFactory*> factories;
-public:
+    static std::map<std::string, PropagatorFactory*>& get_factory();
+protected:
     boost::shared_ptr<Potential> V;
     double tau;
-    virtual double operator()(Configuration conf) = 0;
-    static void registerType(const std::string &name, PropagatorFactory *factory) {
-        factories[name] = factory;
+    unsigned num_total_beads;
+    // This is the total number of beads required to describe a single
+    // high temperature propagator. There would be two real beads (the
+    // extreme ones) and then whatever number of virtual beads...
+public:
+    void set_params(boost::shared_ptr<Potential> pot, double Tau) {
+        V = pot;
+        tau = Tau / (num_total_beads - 1.);
     }
-    static boost::shared_ptr<Propagator> create(const std::string &name) {
-        if(factories.find(name)==factories.end()) {
-            std::cerr<<"Not a valid propagator"<<std::endl;
-            exit(1);
-        }
-        return boost::shared_ptr<Propagator>(factories[name]->create());
+    double get_tau() {
+        return tau;
     }
+    virtual double operator()(const arma::cube &conf) = 0;
+    unsigned total_beads() {
+        return num_total_beads;
+    }
+    static void registerType(const std::string &name, PropagatorFactory *factory);
+    static boost::shared_ptr<Propagator> create(const std::string &name);
 };
-std::map<std::string, PropagatorFactory*> Propagator::factories;
 
 #endif

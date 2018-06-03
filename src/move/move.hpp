@@ -22,9 +22,9 @@ struct MoveFactory {
 };
 
 class Move {
-    static std::map<std::string, MoveFactory*> factories;
+    static std::map<std::string, MoveFactory*>& get_factory();
 public:
-    boost::shared_ptr<Propagator> propagator;
+    std::vector<boost::shared_ptr<Propagator> > propagator;
     unsigned moves_accepted, moves_tried;
 
     Move() {
@@ -35,26 +35,28 @@ public:
 
     virtual Configuration operator() (Configuration conf, arma::uvec atom_nums) = 0;
 
-    void check_amplitude(Configuration &conf_old, Configuration &conf_new) {
+    void check_amplitude(Configuration &conf_old, const Configuration &conf_new) {
         moves_tried++;
-        if((*propagator)(conf_new)/(*propagator)(conf_old) > random_float(0,1)) {
+        double new_weight = 1, old_weight = 1;
+        for(unsigned p=0; p<propagator.size(); p++) {
+            //new_weight *= (*propagator[p])(conf_new.positions(arma::span::all, arma::span(conf_new.bead_num[p], conf_new.bead_num[p+1]), arma::span::all));
+            new_weight *= (*propagator[p])(conf_new.get_augmented_segment(p, p+1));
+            if(new_weight<0)
+                return;
+            old_weight *= (*propagator[p])(conf_old.get_augmented_segment(p, p+1));
+        }
+        if(new_weight/old_weight > random_float(0,1)) {
             conf_old = conf_new;
             moves_accepted++;
         }
+        //if((*propagator)(conf_new)/(*propagator)(conf_old) > random_float(0,1)) {
+        //    conf_old = conf_new;
+        //    moves_accepted++;
+        //}
     }
 
-    static void registerType(const std::string &name, MoveFactory *factory) {
-        factories[name] = factory;
-    }
-
-    static boost::shared_ptr<Move> create(const std::string &name) {
-        if(factories.find(name)==factories.end()) {
-            std::cerr<<"Not a valid move"<<std::endl;
-            exit(1);
-        }
-        return boost::shared_ptr<Move>(factories[name]->create());
-    }
+    static void registerType(const std::string &name, MoveFactory *factory);
+    static boost::shared_ptr<Move> create(const std::string &name);
 };
-std::map<std::string, MoveFactory*> Move::factories;
 
 #endif

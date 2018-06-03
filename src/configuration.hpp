@@ -1,34 +1,29 @@
 #ifndef _CONFIGURATION_HPP_
 #define _CONFIGURATION_HPP_
 
+#include <vector>
+
 #include <armadillo>
 
-struct Configuration {
+class Configuration {
     arma::cube positions;
-    Configuration(unsigned natoms, unsigned nbeads, unsigned ndimensions) {
-        positions = arma::zeros<arma::cube>(natoms, nbeads, ndimensions);
-    }
-    unsigned num_dims() const {
-        return positions.n_slices;
-    }
-    unsigned num_beads() const {
-        return positions.n_cols;
-    }
-    unsigned num_atoms() const {
-        return positions.n_rows;
-    }
-    arma::vec bead_position(unsigned atom_num, unsigned time_ind) const {
-        return positions.tube(atom_num, time_ind);
-    }
-    arma::mat necklace(unsigned atom_num) const {
-        return positions(arma::span(atom_num), arma::span::all, arma::span::all);
-    }
-    arma::mat time_slice(unsigned time_ind) const {
-        return positions(arma::span::all, arma::span(time_ind), arma::span::all);
-    }
-    arma::mat CoM() const {
-        return arma::mean(positions, 1);
-    }
+    std::vector<char> type_of_polymers;   // 'c' for closed; 'o' for open
+    // if type_of_polymers is 'c' for a particular atom,
+    // then the first and last beads would be identical
+    // else the first and last beads can differ
+    std::vector<unsigned> bead_num;
+public:
+    Configuration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums);
+    void augmented_set(unsigned atom_num, unsigned time_ind, unsigned dim, double value);
+    unsigned num_dims() const;
+    unsigned num_beads(unsigned atom_num) const;
+    unsigned num_atoms() const;
+    double augmented_bead_position(unsigned atom_num, unsigned time_ind, unsigned dim) const;
+    arma::vec bead_position(unsigned atom_num, unsigned time_ind) const;
+    arma::mat necklace(unsigned atom_num) const;
+    arma::mat time_slice(unsigned time_ind) const;
+    arma::cube get_augmented_segment(unsigned t1, unsigned t2) const;
+    arma::mat CoM() const;
 };
 
 #endif

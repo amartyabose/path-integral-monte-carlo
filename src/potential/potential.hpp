@@ -18,21 +18,12 @@ struct PotentialFactory {
 };
 
 class Potential {
-    static std::map<std::string, PotentialFactory*> factories;
+    static std::map<std::string, PotentialFactory*>& get_factory();
 public:
     virtual void setup(pt::ptree node) = 0;
     virtual double operator()(arma::mat x) = 0;
-    static void registerType(const std::string &name, PotentialFactory *factory) {
-        factories[name] = factory;
-    }
-    static boost::shared_ptr<Potential> create(const std::string &name) {
-        if(factories.find(name) == factories.end()) {
-            std::cerr<<"Not a valid potential"<<std::endl;
-            exit(1);
-        }
-        return boost::shared_ptr<Potential>(factories[name]->create());
-    }
+    static void registerType(const std::string &name, PotentialFactory *factory);
+    static boost::shared_ptr<Potential> create(const std::string &name);
 };
-std::map<std::string, PotentialFactory*> Potential::factories;
 
 #endif
