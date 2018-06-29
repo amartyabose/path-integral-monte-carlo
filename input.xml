@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<pimc>
+<simulation>
+  <type>pimc</type>
   <parameters>
     <beta>40</beta>
     <num_atoms>1</num_atoms>
@@ -31,7 +32,7 @@
     </BrownianBridge>
   </moves>
   <monte_carlo>
-    <num_MC>4000000</num_MC>
+    <num_MC>1000000</num_MC>
     <num_blocks>10</num_blocks>
   </monte_carlo>
-</pimc>
+</simulation>

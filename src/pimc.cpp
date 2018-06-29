@@ -146,11 +146,11 @@ public:
     void load(const char *fname) {
         pt::ptree tree;
         read_xml(fname, tree);
-        get_parameters(tree.get_child("pimc.parameters"));
-        get_MC_params(tree.get_child("pimc.monte_carlo"));
-        get_system(tree.get_child("pimc.system"));
-        get_propagator(tree.get_child("pimc.propagators"));
-        get_moves(tree.get_child("pimc.moves"), tree.get_child("pimc.parameters"));
+        get_parameters(tree.get_child("simulation.parameters"));
+        get_MC_params(tree.get_child("simulation.monte_carlo"));
+        get_system(tree.get_child("simulation.system"));
+        get_propagator(tree.get_child("simulation.propagators"));
+        get_moves(tree.get_child("simulation.moves"), tree.get_child("simulation.parameters"));
     }
 
     void run_MC() {
@@ -162,26 +162,30 @@ public:
         arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms-1);
         for(unsigned b=0; b<nblocks; b++)
             for(unsigned i=0; i<nMC/(world_size * nblocks); i++) {
-                for(unsigned m=0; m<moves.size(); m++) {
-                    //std::cout<<"Doing move: "<<move_names[m]<<std::endl;
+                for(unsigned m=0; m<moves.size(); m++)
                     c = (*moves[m])(c, atoms);
-                    //std::cout<<"Move done: "<<move_names[m]<<std::endl;
-                }
+
                 ofs<<c.time_slice(0).st();
                 est(b) += (*estimator)(c.time_slice(0));
             }
         est /= nMC/(world_size * nblocks);
-        //std::cout<<arma::mean(est)<<'\t'<<arma::stddev(est)<<std::endl;
-        //std::cout<<arma::mean(xsq)<<'\t'<<arma::stddev(xsq)<<std::endl;
-        //std::cout<<"\nFraction of moves accepted: \n";
-        //for(unsigned m=0; m<move_names.size(); m++)
-        //    std::cout<<move_names[m]<<'\t'<<(double)moves[m]->moves_accepted/moves[m]->moves_tried<<std::endl;
 
         arma::vec est_global = arma::zeros<arma::vec>(nblocks);
         MPI_Reduce(est.memptr(), est_global.memptr(), nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
         est_global /= world_size;
+
+        std::vector<unsigned> global_moves_tried, global_moves_accepted;
+        for(unsigned m=0; m<move_names.size(); m++) {
+            unsigned tried = 0, accepted = 0;
+            MPI_Reduce(&moves[m]->moves_tried, &tried, 1, MPI_UNSIGNED, MPI_SUM, 0, MPI_COMM_WORLD);
+            MPI_Reduce(&moves[m]->moves_accepted, &accepted, 1, MPI_UNSIGNED, MPI_SUM, 0, MPI_COMM_WORLD);
+            global_moves_tried.push_back(tried);
+            global_moves_accepted.push_back(accepted);
+        }
         if(!my_id) {
             std::cout<<arma::mean(est_global)<<'\t'<<arma::stddev(est_global)<<std::endl;
+            for(unsigned m=0; m<move_names.size(); m++)
+                std::cout<<move_names[m]<<'\t'<<(double)global_moves_accepted[m]/global_moves_tried[m]<<std::endl;
         }
     }
 };

@@ -6,6 +6,7 @@
 #include <armadillo>
 
 class Configuration {
+protected:
     arma::cube positions;
     std::vector<char> type_of_polymers;   // 'c' for closed; 'o' for open
     // if type_of_polymers is 'c' for a particular atom,
