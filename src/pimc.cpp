@@ -24,6 +24,7 @@ using boost::shared_ptr;
 #include "moves.hpp"
 #include "propagators.hpp"
 #include "configuration.hpp"
+#include "pi_wigner_config.hpp"
 
 struct Estimator {
     virtual double operator() (arma::mat x) = 0;
@@ -40,6 +41,8 @@ struct PE_estimator : public Estimator {
 
 class Simulation {
     int my_id, world_size;
+
+    std::string type;
 
     unsigned ndimensions, natoms, nprops;
     double beta, mass;
@@ -102,13 +105,52 @@ class Simulation {
         return dt;
     }
 
-    void get_propagator(pt::ptree prop) {
+    void insert_position_momentum_moves(pt::ptree::value_type p, pt::ptree params) {
+        moves.push_back(Move::create("WignerPosition"));
+        moves.back()->setup(p, params);
+        move_names.push_back("WignerPosition");
+
+        boost::shared_ptr<Propagator> keprop(Propagator::create("WignerKE"));
+        keprop->set_params(pot, 0., p, params);
+
+        moves.push_back(Move::create("WignerMomentum"));
+        moves.back()->setup(p, params);
+        moves.back()->propagator.push_back(keprop);
+        move_names.push_back("WignerMomentum");
+    }
+
+    void get_propagator(pt::ptree prop, pt::ptree param) {
         std::vector<double> dt = get_dts(prop);
         bead_nums.push_back(0);
         unsigned prop_num = 0;
+        bool wigner_prop = false;
         BOOST_FOREACH(const pt::ptree::value_type &p, prop) {
+            if(p.second.get<string>("<xmlattr>.name") == "WignerG2") {
+                if(type != "wigner") {
+                    if(!my_id)
+                        std::cerr<<"WignerG2 propagator allowed only in a Wigner calculation."<<std::endl;
+                    MPI_Finalize();
+                    exit(1);
+                } else if (type == "wigner"){
+                    if(!wigner_prop) {
+                        if(p.second.get<unsigned>("<xmlattr>.number")>1) {
+                            if(!my_id)
+                                std::cerr<<"Only 1 WignerG2 propagator allowed in a Wigner calculation."<<std::endl;
+                            MPI_Finalize();
+                            exit(1);
+                        }
+                        wigner_prop = true;
+                        insert_position_momentum_moves(p, param);
+                    } else {
+                        if(!my_id)
+                            std::cerr<<"Only 1 WignerG2 propagator allowed in a Wigner calculation."<<std::endl;
+                        MPI_Finalize();
+                        exit(1);
+                    }
+                }
+            }
             props.push_back(Propagator::create(p.second.get<string>("<xmlattr>.name")));
-            props.back()->set_params(pot, dt[prop_num]);
+            props.back()->set_params(pot, dt[prop_num], p, param);
             prop_num++;
             bead_nums.push_back(bead_nums.back() + props.back()->total_beads() - 1);
             unsigned n_props = p.second.get<unsigned>("<xmlattr>.number");
@@ -118,12 +160,20 @@ class Simulation {
             }
         }
 
+        if(type == "wigner" && !wigner_prop) {
+            if(!my_id)
+                std::cerr<<"WignerG2 propagator necessary in a Wigner calculation."<<std::endl;
+            MPI_Finalize();
+            exit(1);
+        }
+
         if(props.size() != nprops) {
             if (!my_id)
                 std::cerr<<"Number of propagators in <parameters> and <propagators> do not match"<<std::endl;
             MPI_Finalize();
             exit(1);
         }
+
         if (!my_id)
             std::cout<<"Total number of beads: "<<bead_nums.back()+1<<std::endl;
     }
@@ -146,15 +196,20 @@ public:
     void load(const char *fname) {
         pt::ptree tree;
         read_xml(fname, tree);
+        type = tree.get<string>("simulation.type");
         get_parameters(tree.get_child("simulation.parameters"));
         get_MC_params(tree.get_child("simulation.monte_carlo"));
         get_system(tree.get_child("simulation.system"));
-        get_propagator(tree.get_child("simulation.propagators"));
+        get_propagator(tree.get_child("simulation.propagators"), tree.get_child("simulation.parameters"));
         get_moves(tree.get_child("simulation.moves"), tree.get_child("simulation.parameters"));
     }
 
     void run_MC() {
-        Configuration c(natoms, ndimensions, bead_nums);
+        boost::shared_ptr<Configuration> c;
+        if (type=="pimc")
+            c.reset(new Configuration(natoms, ndimensions, bead_nums));
+        else if (type=="wigner")
+            c.reset(new WignerConfiguration(natoms, ndimensions, bead_nums));
         std::ofstream ofs("test_" + boost::lexical_cast<string>(my_id));
         arma::vec moves_accepted = arma::zeros<arma::vec>(moves.size());
         arma::vec moves_tried = arma::zeros<arma::vec>(moves.size());
@@ -163,10 +218,10 @@ public:
         for(unsigned b=0; b<nblocks; b++)
             for(unsigned i=0; i<nMC/(world_size * nblocks); i++) {
                 for(unsigned m=0; m<moves.size(); m++)
-                    c = (*moves[m])(c, atoms);
+                    (*moves[m])(c, atoms);
 
-                ofs<<c.time_slice(0).st();
-                est(b) += (*estimator)(c.time_slice(0));
+                ofs<<c->repr();
+                est(b) += (*estimator)(c->time_slice(0));
             }
         est /= nMC/(world_size * nblocks);
 

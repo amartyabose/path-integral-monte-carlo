@@ -11,7 +11,7 @@ void Move::registerType(const std::string &name, MoveFactory *factory) {
 
 boost::shared_ptr<Move> Move::create(const std::string &name) {
     if(get_factory().find(name)==get_factory().end()) {
-        std::cerr<<"Not a valid move"<<std::endl;
+        std::cerr<<"Not a valid move: "<<name<<std::endl;
         exit(1);
     }
     return boost::shared_ptr<Move>(get_factory()[name]->create());

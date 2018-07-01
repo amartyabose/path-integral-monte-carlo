@@ -14,11 +14,14 @@ protected:
     // else the first and last beads can differ
     std::vector<unsigned> bead_num;
 public:
+    Configuration() {}
     Configuration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums);
+    virtual Configuration* duplicate() {return new Configuration(*this);}
     void augmented_set(unsigned atom_num, unsigned time_ind, unsigned dim, double value);
     void shift(unsigned atom_num, arma::vec shift_amt);
     unsigned num_dims() const;
-    unsigned num_beads(unsigned atom_num) const;
+    unsigned num_beads() const;
+    unsigned num_augmented_beads() const;
     unsigned num_atoms() const;
     double augmented_bead_position(unsigned atom_num, unsigned time_ind, unsigned dim) const;
     arma::vec bead_position(unsigned atom_num, unsigned time_ind) const;
@@ -26,6 +29,7 @@ public:
     arma::mat time_slice(unsigned time_ind) const;
     arma::cube get_augmented_segment(unsigned t1, unsigned t2) const;
     arma::mat CoM() const;
+    virtual std::string repr() const;
 };
 
 #endif

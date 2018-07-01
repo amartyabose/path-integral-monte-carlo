@@ -1,4 +1,7 @@
 #include <algorithm>
+#include <string>
+
+#include <boost/lexical_cast.hpp>
 
 #include "configuration.hpp"
 
@@ -11,7 +14,8 @@ Configuration::Configuration(unsigned natoms, unsigned ndimensions, std::vector<
 void Configuration::augmented_set(unsigned atom_num, unsigned time_ind, unsigned dim, double value) {
     positions(atom_num, time_ind, dim) = value;
     if (type_of_polymers[atom_num] == 'c' && time_ind == 0)
-        positions(atom_num, num_beads(atom_num), dim) = value;
+        //positions(atom_num, num_beads(atom_num), dim) = value;
+        positions(atom_num, num_augmented_beads(), dim) = value;
 }
 
 void Configuration::shift(unsigned atom_num, arma::vec shift_amt) {
@@ -23,8 +27,13 @@ unsigned Configuration::num_dims() const {
     return positions.n_slices;
 }
 
-unsigned Configuration::num_beads(unsigned atom_num) const {
-    return (type_of_polymers[atom_num]=='o') ? positions.n_cols : positions.n_cols-1;
+unsigned Configuration::num_beads() const {
+    return bead_num.size();
+}
+
+unsigned Configuration::num_augmented_beads() const {
+    //return (type_of_polymers[atom_num]=='o') ? positions.n_cols : positions.n_cols-1;
+    return positions.n_cols-1;
 }
 
 unsigned Configuration::num_atoms() const {
@@ -53,4 +62,14 @@ arma::cube Configuration::get_augmented_segment(unsigned t1, unsigned t2) const 
 
 arma::mat Configuration::CoM() const {
     return arma::mean(positions, 1);
+}
+
+std::string Configuration::repr() const {
+    std::string data;
+    arma::mat t0 = time_slice(0);
+    for(unsigned r=0; r<t0.n_rows; r++)
+        for(unsigned c=0; c<t0.n_cols; c++)
+            data += boost::lexical_cast<std::string>(t0(r, c)) + "\t";
+
+    return data + "\n";
 }

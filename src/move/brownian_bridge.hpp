@@ -27,13 +27,13 @@ public:
         mass = params.get<double>("mass", 1);
     }
 
-    Configuration operator()(Configuration conf, arma::uvec atom_nums) {
+    void operator()(boost::shared_ptr<Configuration> &conf, arma::uvec atom_nums) {
         for(unsigned atom=0; atom<atom_nums.n_rows; atom++) {
-            unsigned nbeads = conf.num_beads(atom_nums(atom));
+            unsigned nbeads = conf->num_augmented_beads();
             for(unsigned attempt=0; attempt<num_attempts; attempt++) {
                 unsigned start = random_integer(0, nbeads-1);
                 unsigned end = (start + num_beads_moved + 1) % nbeads;
-                Configuration conf_new = conf;
+                boost::shared_ptr<Configuration> conf_new(conf->duplicate());
                 for(unsigned b = (start+1)%nbeads, nmoved=0; nmoved < num_beads_moved; b = (b+1)%nbeads, nmoved++) {
                     double tau0 = get_temp((b+nbeads-1)%nbeads);
                     double tau1 = get_temp(b);
@@ -48,13 +48,12 @@ public:
                     new_to_end /= mass;
                     double start_to_end = start_to_new + new_to_end;
 
-                    for(unsigned d=0; d<conf.num_dims(); d++)
-                        conf_new.augmented_set(atom_nums(atom), b, d, random_normal(((new_to_end)*conf_new.augmented_bead_position(atom_nums(atom), (nbeads+b-1)%nbeads, d) + start_to_new*conf_new.augmented_bead_position(atom_nums(atom), end, d))/start_to_end, std::sqrt(start_to_new * new_to_end / start_to_end)));
+                    for(unsigned d=0; d<conf->num_dims(); d++)
+                        conf_new->augmented_set(atom_nums(atom), b, d, random_normal(((new_to_end)*conf_new->augmented_bead_position(atom_nums(atom), (nbeads+b-1)%nbeads, d) + start_to_new*conf_new->augmented_bead_position(atom_nums(atom), end, d))/start_to_end, std::sqrt(start_to_new * new_to_end / start_to_end)));
                 }
                 check_amplitude(conf, conf_new);
             }
         }
-        return conf;
     }
 };
 

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<simulation>
+  <type>wigner</type>
+  <parameters>
+    <beta>5</beta>
+    <num_atoms>1</num_atoms>
+    <num_dimensions>1</num_dimensions>
+    <num_propagators>24</num_propagators>
+    <mass>1</mass>
+  </parameters>
+  <system>
+    <potential name = "HarmonicOscillator">
+      <frequency>1</frequency>
+    </potential>
+    <!--<potential name = "PolynomialPotential">
+      <coeffs>0 0 1 -0.1 0.1</coeffs>
+    </potential>-->
+    <estimator>potential</estimator>
+  </system>
+  <propagators>
+    <propagator name="G2" number="23"/>
+    <propagator name="WignerG2" number="1" dt="0.1" gamma="1" nx="3" np="0" alpha="0.7059"/>
+  </propagators>
+  <moves>
+    <Translate>
+      <length>2</length>
+    </Translate>
+    <BrownianBridge>
+      <length>10</length>
+      <attempts>5</attempts>
+    </BrownianBridge>
+  </moves>
+  <monte_carlo>
+    <num_MC>100000</num_MC>
+    <num_blocks>10</num_blocks>
+  </monte_carlo>
+</simulation>

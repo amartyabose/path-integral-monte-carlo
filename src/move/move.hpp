@@ -13,6 +13,7 @@ namespace pt = boost::property_tree;
 
 #include "../random.hpp"
 #include "../configuration.hpp"
+#include "../pi_wigner_config.hpp"
 #include "../propagators.hpp"
 
 class Move;
@@ -33,26 +34,21 @@ public:
 
     virtual void setup(pt::ptree::value_type node, pt::ptree params) = 0;
 
-    virtual Configuration operator() (Configuration conf, arma::uvec atom_nums) = 0;
+    virtual void operator() (boost::shared_ptr<Configuration> &conf, arma::uvec atom_nums) = 0;
 
-    void check_amplitude(Configuration &conf_old, const Configuration &conf_new) {
+    virtual void check_amplitude(boost::shared_ptr<Configuration> &conf_old, boost::shared_ptr<Configuration> conf_new) {
         moves_tried++;
         double new_weight = 1, old_weight = 1;
         for(unsigned p=0; p<propagator.size(); p++) {
-            //new_weight *= (*propagator[p])(conf_new.positions(arma::span::all, arma::span(conf_new.bead_num[p], conf_new.bead_num[p+1]), arma::span::all));
-            new_weight *= (*propagator[p])(conf_new.get_augmented_segment(p, p+1));
+            new_weight *= (*propagator[p])(conf_new->get_augmented_segment(p, p+1));
             if(new_weight<0)
                 return;
-            old_weight *= (*propagator[p])(conf_old.get_augmented_segment(p, p+1));
+            old_weight *= (*propagator[p])(conf_old->get_augmented_segment(p, p+1));
         }
         if(new_weight/old_weight > random_float(0,1)) {
-            conf_old = conf_new;
+            conf_old.reset(conf_new->duplicate());
             moves_accepted++;
         }
-        //if((*propagator)(conf_new)/(*propagator)(conf_old) > random_float(0,1)) {
-        //    conf_old = conf_new;
-        //    moves_accepted++;
-        //}
     }
 
     static void registerType(const std::string &name, MoveFactory *factory);

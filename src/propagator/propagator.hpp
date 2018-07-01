@@ -24,11 +24,11 @@ protected:
     // high temperature propagator. There would be two real beads (the
     // extreme ones) and then whatever number of virtual beads...
 public:
-    void set_params(boost::shared_ptr<Potential> pot, double Tau) {
+    virtual void set_params(boost::shared_ptr<Potential> pot, double Tau, pt::ptree::value_type p, pt::ptree params) {
         V = pot;
         tau = Tau / (num_total_beads - 1.);
     }
-    double get_tau() {
+    virtual double get_tau() {
         return tau;
     }
     virtual double operator()(const arma::cube &conf) = 0;
