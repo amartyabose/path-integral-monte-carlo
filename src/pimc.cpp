@@ -42,7 +42,7 @@ struct PE_estimator : public Estimator {
 class Simulation {
     int my_id, world_size;
 
-    std::string type;
+    std::string type, output_name;
 
     unsigned ndimensions, natoms, nprops;
     double beta, mass;
@@ -125,6 +125,8 @@ class Simulation {
         unsigned prop_num = 0;
         bool wigner_prop = false;
         BOOST_FOREACH(const pt::ptree::value_type &p, prop) {
+            props.push_back(Propagator::create(p.second.get<string>("<xmlattr>.name")));
+            props.back()->set_params(pot, dt[prop_num], p, param);
             if(p.second.get<string>("<xmlattr>.name") == "WignerG2") {
                 if(type != "wigner") {
                     if(!my_id)
@@ -141,6 +143,7 @@ class Simulation {
                         }
                         wigner_prop = true;
                         insert_position_momentum_moves(p, param);
+                        beta = beta - p.second.get<double>("<xmlattr>.dt") + props.back()->get_tau();
                     } else {
                         if(!my_id)
                             std::cerr<<"Only 1 WignerG2 propagator allowed in a Wigner calculation."<<std::endl;
@@ -149,8 +152,6 @@ class Simulation {
                     }
                 }
             }
-            props.push_back(Propagator::create(p.second.get<string>("<xmlattr>.name")));
-            props.back()->set_params(pot, dt[prop_num], p, param);
             prop_num++;
             bead_nums.push_back(bead_nums.back() + props.back()->total_beads() - 1);
             unsigned n_props = p.second.get<unsigned>("<xmlattr>.number");
@@ -184,6 +185,10 @@ class Simulation {
             moves.back()->setup(m, params);
             moves.back()->propagator = props;
             move_names.push_back(m.first);
+
+            if(type=="wigner" && m.first=="BrownianBridge") {
+                moves.back()->set_beta(beta);
+            }
         }
     }
 
@@ -197,6 +202,7 @@ public:
         pt::ptree tree;
         read_xml(fname, tree);
         type = tree.get<string>("simulation.type");
+        output_name = tree.get<string>("simulation.output_file");
         get_parameters(tree.get_child("simulation.parameters"));
         get_MC_params(tree.get_child("simulation.monte_carlo"));
         get_system(tree.get_child("simulation.system"));
@@ -210,23 +216,26 @@ public:
             c.reset(new Configuration(natoms, ndimensions, bead_nums));
         else if (type=="wigner")
             c.reset(new WignerConfiguration(natoms, ndimensions, bead_nums));
-        std::ofstream ofs("test_" + boost::lexical_cast<string>(my_id));
+        std::ofstream ofs(output_name);// + boost::lexical_cast<string>(my_id));
         arma::vec moves_accepted = arma::zeros<arma::vec>(moves.size());
         arma::vec moves_tried = arma::zeros<arma::vec>(moves.size());
-        arma::vec est = arma::zeros<arma::vec>(nblocks);
+        arma::cx_vec est = arma::zeros<arma::cx_vec>(nblocks);
         arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms-1);
+        arma::cx_vec total_weight = arma::zeros<arma::cx_vec>(nblocks);
+        ofs<<c->header();
         for(unsigned b=0; b<nblocks; b++)
             for(unsigned i=0; i<nMC/(world_size * nblocks); i++) {
                 for(unsigned m=0; m<moves.size(); m++)
                     (*moves[m])(c, atoms);
 
-                ofs<<c->repr();
-                est(b) += (*estimator)(c->time_slice(0));
+                ofs<<c->repr(pot);
+                est(b) += c->weight() * (*estimator)(c->pos());
+                total_weight(b) += c->weight();
             }
-        est /= nMC/(world_size * nblocks);
+        est /= total_weight;
 
-        arma::vec est_global = arma::zeros<arma::vec>(nblocks);
-        MPI_Reduce(est.memptr(), est_global.memptr(), nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        arma::cx_vec est_global = arma::zeros<arma::cx_vec>(nblocks);
+        MPI_Reduce(est.memptr(), est_global.memptr(), 2*nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
         est_global /= world_size;
 
         std::vector<unsigned> global_moves_tried, global_moves_accepted;
@@ -238,7 +247,10 @@ public:
             global_moves_accepted.push_back(accepted);
         }
         if(!my_id) {
-            std::cout<<arma::mean(est_global)<<'\t'<<arma::stddev(est_global)<<std::endl;
+            std::complex<double> mean_val = arma::mean(est_global);
+            double real_std_val = arma::stddev(arma::real(est_global));
+            double imag_std_val = arma::stddev(arma::imag(est_global));
+            std::cout<<mean_val.real()<<'\t'<<mean_val.imag()<<'\t'<<real_std_val<<'\t'<<imag_std_val<<std::endl;
             for(unsigned m=0; m<move_names.size(); m++)
                 std::cout<<move_names[m]<<'\t'<<(double)global_moves_accepted[m]/global_moves_tried[m]<<std::endl;
         }

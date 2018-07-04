@@ -21,15 +21,7 @@ public:
     double operator()(const arma::cube &momentum) {
         double ke = arma::accu(momentum%momentum)/(2.*mass);
         double var = (beta-tau) * ke;
-        double poly_expansion = 1;
-        double term = var;
-        for(unsigned long i=1; i<np; i++) {
-            poly_expansion += term;
-            term *= var/(i+1);
-        }
-
-        //return poly_expansion;
-        return std::exp((beta-tau) * ke);
+        return exp_series(var, np);
     }
 };
 

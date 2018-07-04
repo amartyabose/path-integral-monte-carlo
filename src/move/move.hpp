@@ -34,6 +34,8 @@ public:
 
     virtual void setup(pt::ptree::value_type node, pt::ptree params) = 0;
 
+    virtual void set_beta(double) {}
+
     virtual void operator() (boost::shared_ptr<Configuration> &conf, arma::uvec atom_nums) = 0;
 
     virtual void check_amplitude(boost::shared_ptr<Configuration> &conf_old, boost::shared_ptr<Configuration> conf_new) {

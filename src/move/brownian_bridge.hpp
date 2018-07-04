@@ -27,6 +27,10 @@ public:
         mass = params.get<double>("mass", 1);
     }
 
+    void set_beta(double beta) {
+        this->beta = beta;
+    }
+
     void operator()(boost::shared_ptr<Configuration> &conf, arma::uvec atom_nums) {
         for(unsigned atom=0; atom<atom_nums.n_rows; atom++) {
             unsigned nbeads = conf->num_augmented_beads();

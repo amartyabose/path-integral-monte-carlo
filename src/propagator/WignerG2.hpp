@@ -26,14 +26,8 @@ public:
         arma::mat xf = conf(arma::span::all, arma::span(1), arma::span::all);
         double dist2 = arma::accu((x0-xf)%(x0-xf));
         double var = dist2 * mass / (2. * get_tau());
-        double poly_expansion = 1;
-        double term = var;
-        for(unsigned long i=1; i<nx; i++) {
-            poly_expansion += term;
-            term *= var/(i+1);
-        }
 
-        return std::exp(total_amplitude) * poly_expansion;
+        return std::exp(total_amplitude) * exp_series(var, nx);
     }
 };
 

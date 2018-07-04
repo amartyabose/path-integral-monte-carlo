@@ -64,12 +64,28 @@ arma::mat Configuration::CoM() const {
     return arma::mean(positions, 1);
 }
 
-std::string Configuration::repr() const {
-    std::string data;
+arma::mat Configuration::pos() const {
+    return time_slice(0);
+}
+
+std::string Configuration::header() const {
+    std::string head = "weight\t";
+    if(positions.n_slices==1)
+        for(unsigned atom=0; atom<positions.n_rows; atom++)
+            head += "pos_" + boost::lexical_cast<std::string>(atom) + "\t";
+    head += "potential\n";
+    return head;
+}
+
+std::string Configuration::repr(const boost::shared_ptr<Potential> &V) const {
+    std::string data = boost::lexical_cast<string>(weight().real()) + "\t";
     arma::mat t0 = time_slice(0);
-    for(unsigned r=0; r<t0.n_rows; r++)
-        for(unsigned c=0; c<t0.n_cols; c++)
-            data += boost::lexical_cast<std::string>(t0(r, c)) + "\t";
+    if(t0.n_cols==1)
+        for(unsigned r=0; r<t0.n_rows; r++)
+            for(unsigned c=0; c<t0.n_cols; c++)
+                data += boost::lexical_cast<std::string>(t0(r, c)) + "\t";
+
+    data += boost::lexical_cast<std::string>((*V)(pos()));
 
     return data + "\n";
 }

@@ -1,38 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <simulation>
   <type>pimc</type>
+  <output_file>pimc_fbsd_5</output_file>
   <parameters>
-    <beta>40</beta>
+    <beta>5</beta>
     <num_atoms>1</num_atoms>
     <num_dimensions>1</num_dimensions>
-    <num_propagators>12</num_propagators>
+    <num_propagators>3</num_propagators>
     <mass>1</mass>
   </parameters>
   <system>
-    <potential name = "HarmonicOscillator">
+    <!--<potential name = "HarmonicOscillator">
       <frequency>1</frequency>
+    </potential>-->
+    <potential name = "PolynomialPotential">
+      <coeffs>0 0 1 -0.1 0.1</coeffs>
     </potential>
     <!--<potential name = "PolynomialPotential">
-      <coeffs>0 0 0.5</coeffs>
+      <coeffs>0 0 1 -0.2 0.015</coeffs>
     </potential>-->
     <estimator>potential</estimator>
   </system>
   <propagators>
-    <propagator name="G2" number="1" dt="0.1"/>
-    <propagator name="G6" number="10"/>
-    <propagator name="G2" number="1" dt="0.1"/>
+    <propagator name="G6" number="3"/>
   </propagators>
   <moves>
     <Translate>
-      <length>0.75</length>
+      <length>2</length>
     </Translate>
     <BrownianBridge>
-      <length>6</length>
-      <attempts>2</attempts>
+      <length>7</length>
+      <attempts>5</attempts>
     </BrownianBridge>
   </moves>
   <monte_carlo>
-    <num_MC>1000000</num_MC>
+    <num_MC>10000000</num_MC>
     <num_blocks>10</num_blocks>
   </monte_carlo>
 </simulation>

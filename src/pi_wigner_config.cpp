@@ -19,24 +19,38 @@ void WignerConfiguration::set_momentum(unsigned atom_num, unsigned dim, double v
     momentum(atom_num, dim) = value;
 }
 
-std::string WignerConfiguration::repr() const {
-    std::string data;
-    for(unsigned r=0; r<wigner_pos.n_rows; r++)
-        for(unsigned c=0; c<wigner_pos.n_cols; c++)
-            data += boost::lexical_cast<std::string>(wigner_pos(r, c)) + "\t" + boost::lexical_cast<std::string>(momentum(r,c)) + "\t";
+arma::mat WignerConfiguration::pos() const {
+    return wigner_pos;
+}
 
-    //arma::mat t0 = time_slice(0);
-    //arma::mat tm1 = time_slice(num_beads()-2);
-    //for(unsigned r=0; r<t0.n_rows; r++)
-    //    for(unsigned c=0; c<t0.n_cols; c++)
-    //        data += boost::lexical_cast<std::string>(t0(r, c)) + "\t";
-    //for(unsigned r=0; r<tm1.n_rows; r++)
-    //    for(unsigned c=0; c<tm1.n_cols; c++)
-    //        data += boost::lexical_cast<std::string>(tm1(r, c)) + "\t";
+void WignerConfiguration::shift(unsigned atom_num, arma::vec shift_amt) {
+    Configuration::shift(atom_num, shift_amt);
+    wigner_pos.row(atom_num) += shift_amt;
+}
 
+std::complex<double> WignerConfiguration::weight() const {
     std::complex<double> I(0,1);
-    std::complex<double> phase = std::exp(-I*arma::accu(momentum % (time_slice(0)-time_slice(num_beads()-2))));
-    data += boost::lexical_cast<std::string>(phase.real());
+    return std::exp(-I*arma::accu(momentum % (time_slice(0)-time_slice(num_beads()-2))));
+}
+
+std::string WignerConfiguration::header() const {
+    std::string head = "weight\t";
+    if(positions.n_slices==1)
+        for(unsigned atom=0; atom<positions.n_rows; atom++)
+            head += "pos_" + boost::lexical_cast<std::string>(atom) + "\tmom_" + boost::lexical_cast<std::string>(atom) + "\t";
+    head += "potential\n";
+    return head;
+}
+
+std::string WignerConfiguration::repr(const boost::shared_ptr<Potential> &V) const {
+    std::string data = boost::lexical_cast<std::string>(weight().real()) + "\t";
+
+    if(wigner_pos.n_cols==1)
+        for(unsigned r=0; r<wigner_pos.n_rows; r++)
+            for(unsigned c=0; c<wigner_pos.n_cols; c++)
+                data += boost::lexical_cast<std::string>(wigner_pos(r, c)) + "\t" + boost::lexical_cast<std::string>(momentum(r,c)) + "\t";
+
+    data += boost::lexical_cast<std::string>((*V)(pos()));
 
     return data + "\n";
 }
