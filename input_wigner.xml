@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <simulation>
   <type>wigner</type>
-  <output_file>wigner_skewed_3_3X4P</output_file>
+  <output_file>wigner_skewed_3_10X10P</output_file>
   <parameters>
     <beta>3</beta>
     <num_atoms>1</num_atoms>
@@ -23,7 +23,7 @@
   </system>
   <propagators>
     <propagator name="G6" number="3"/>
-    <propagator name="WignerG2" number="1" dt="0.1" gamma="1" nx="3" np="4" alpha="1.4118"/>
+    <propagator name="WignerG2" number="1" dt="0.1" gamma="1" nx="10" np="10" alpha="1.4118"/>
   </propagators>
   <moves>
     <Translate>

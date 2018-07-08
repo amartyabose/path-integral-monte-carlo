@@ -5,10 +5,18 @@
 
 #include "configuration.hpp"
 
-Configuration::Configuration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums) {
+Configuration::Configuration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums, double m) {
     bead_num = bead_nums;
     positions = arma::zeros<arma::cube>(natoms, bead_nums.back()+1, ndimensions);
     type_of_polymers.resize(natoms, 'c');
+    mass = m;
+}
+
+void Configuration::load_config(std::string filename) {
+    arma::mat pos;
+    pos.load(filename);
+    for(unsigned b=0; b<positions.n_cols; b++)
+        positions(arma::span::all, arma::span(b), arma::span::all) = pos;
 }
 
 void Configuration::augmented_set(unsigned atom_num, unsigned time_ind, unsigned dim, double value) {
@@ -85,7 +93,12 @@ std::string Configuration::repr(const boost::shared_ptr<Potential> &V) const {
             for(unsigned c=0; c<t0.n_cols; c++)
                 data += boost::lexical_cast<std::string>(t0(r, c)) + "\t";
 
-    data += boost::lexical_cast<std::string>((*V)(pos()));
+    double pot = 0;
+    for(unsigned b=0; b<num_beads(); b++)
+        pot += (*V)(time_slice(b));
+    pot /= num_beads();
+
+    data += boost::lexical_cast<std::string>(pot);
 
     return data + "\n";
 }

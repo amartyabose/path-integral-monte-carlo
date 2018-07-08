@@ -6,9 +6,14 @@
 
 #include "pi_wigner_config.hpp"
 
-WignerConfiguration::WignerConfiguration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums) : Configuration(natoms, ndimensions, bead_nums) {
+WignerConfiguration::WignerConfiguration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums, double mass) : Configuration(natoms, ndimensions, bead_nums, mass) {
     momentum = arma::zeros<arma::mat>(natoms, ndimensions);
     wigner_pos = arma::zeros<arma::mat>(natoms, ndimensions);
+}
+
+void WignerConfiguration::load_config(std::string filename) {
+    Configuration::load_config(filename);
+    wigner_pos.load(filename);
 }
 
 void WignerConfiguration::set_position(unsigned atom_num, unsigned dim, double value) {
@@ -25,7 +30,7 @@ arma::mat WignerConfiguration::pos() const {
 
 void WignerConfiguration::shift(unsigned atom_num, arma::vec shift_amt) {
     Configuration::shift(atom_num, shift_amt);
-    wigner_pos.row(atom_num) += shift_amt;
+    wigner_pos.row(atom_num) += shift_amt.st();
 }
 
 std::complex<double> WignerConfiguration::weight() const {
@@ -38,7 +43,7 @@ std::string WignerConfiguration::header() const {
     if(positions.n_slices==1)
         for(unsigned atom=0; atom<positions.n_rows; atom++)
             head += "pos_" + boost::lexical_cast<std::string>(atom) + "\tmom_" + boost::lexical_cast<std::string>(atom) + "\t";
-    head += "potential\n";
+    head += "potential\tkinetic\n";
     return head;
 }
 
@@ -50,7 +55,7 @@ std::string WignerConfiguration::repr(const boost::shared_ptr<Potential> &V) con
             for(unsigned c=0; c<wigner_pos.n_cols; c++)
                 data += boost::lexical_cast<std::string>(wigner_pos(r, c)) + "\t" + boost::lexical_cast<std::string>(momentum(r,c)) + "\t";
 
-    data += boost::lexical_cast<std::string>((*V)(pos()));
+    data += boost::lexical_cast<std::string>((*V)(pos())) + "\t" + boost::lexical_cast<std::string>(arma::accu(momentum%momentum)/(2.*mass));
 
     return data + "\n";
 }

@@ -15,9 +15,11 @@ protected:
     // then the first and last beads would be identical
     // else the first and last beads can differ
     std::vector<unsigned> bead_num;
+    double mass;
 public:
     Configuration() {}
-    Configuration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums);
+    Configuration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums, double mass);
+    virtual void load_config(std::string filename);
     virtual Configuration* duplicate() {return new Configuration(*this);}
     void augmented_set(unsigned atom_num, unsigned time_ind, unsigned dim, double value);
     virtual void shift(unsigned atom_num, arma::vec shift_amt);

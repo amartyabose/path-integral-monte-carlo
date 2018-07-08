@@ -22,6 +22,7 @@ public:
         double ke = arma::accu(momentum%momentum)/(2.*mass);
         double var = (beta-tau) * ke;
         return exp_series(var, np);
+        //return std::exp(-beta * ke) * exp_series(var, np);
     }
 };
 

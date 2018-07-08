@@ -45,6 +45,9 @@ public:
             new_weight *= (*propagator[p])(pnew);
             old_weight *= (*propagator[p])(pold);
         }
+        //temp_pnew.print("New p");
+        //temp_pold.print("Old p");
+        //std::cout<<new_weight<<"\t"<<old_weight<<std::endl;
         if(new_weight/old_weight > random_float(0,1)) {
             conf_old.reset(conf_new->duplicate());
             moves_accepted++;

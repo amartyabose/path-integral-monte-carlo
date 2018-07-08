@@ -42,7 +42,7 @@ struct PE_estimator : public Estimator {
 class Simulation {
     int my_id, world_size;
 
-    std::string type, output_name;
+    std::string type, output_name, initial_config;
 
     unsigned ndimensions, natoms, nprops;
     double beta, mass;
@@ -63,6 +63,7 @@ class Simulation {
         natoms = params.get<unsigned>("num_atoms");
         nprops = params.get<unsigned>("num_propagators");
         mass = params.get<double>("mass", 1);
+        initial_config = params.get<std::string>("initial_configuration", "");
     }
 
     virtual void get_MC_params(pt::ptree params) {
@@ -213,10 +214,12 @@ public:
     void run_MC() {
         boost::shared_ptr<Configuration> c;
         if (type=="pimc")
-            c.reset(new Configuration(natoms, ndimensions, bead_nums));
+            c.reset(new Configuration(natoms, ndimensions, bead_nums, mass));
         else if (type=="wigner")
-            c.reset(new WignerConfiguration(natoms, ndimensions, bead_nums));
-        std::ofstream ofs(output_name);// + boost::lexical_cast<string>(my_id));
+            c.reset(new WignerConfiguration(natoms, ndimensions, bead_nums, mass));
+        if (initial_config != "")
+            c->load_config(initial_config);
+        std::ofstream ofs(output_name + boost::lexical_cast<string>(my_id));
         arma::vec moves_accepted = arma::zeros<arma::vec>(moves.size());
         arma::vec moves_tried = arma::zeros<arma::vec>(moves.size());
         arma::cx_vec est = arma::zeros<arma::cx_vec>(nblocks);
@@ -263,7 +266,8 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-    generator.seed(static_cast<unsigned>(my_id) + 213);
+    //generator.seed(static_cast<unsigned>(my_id) + 213);           // For reproducibility
+    generator.seed(static_cast<unsigned>(my_id) + time(NULL));
 
     if(argc<2) {
         if (!my_id)

@@ -25,6 +25,6 @@ def calculate_hists(filename):
         np.savetxt(filename+'_'+col+'_dist', np.array((bins, hist, stddevs)).T)
         print(filename+'_'+col+'_dist written')
 
-def plot(filename, fmt, lbl):
+def plot(filename, **kwargs):
     data = np.loadtxt(filename)
-    plt.errorbar(data[:,0], data[:,1], yerr=data[:,2], capsize=3, label=lbl, fmt=fmt)
+    plt.errorbar(data[:,0], data[:,1], yerr=data[:,2], capsize=3, **kwargs)

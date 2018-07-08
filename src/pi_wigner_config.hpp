@@ -8,7 +8,8 @@ protected:
     arma::mat wigner_pos, momentum;
 public:
     WignerConfiguration() {}
-    WignerConfiguration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums);
+    WignerConfiguration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums, double mass);
+    virtual void load_config(std::string filename);
     virtual Configuration* duplicate() {return new WignerConfiguration(*this);}
     virtual void shift(unsigned atom_num, arma::vec shift_amt);
     arma::mat get_momentum() const { return momentum; }
