@@ -27,16 +27,62 @@ using boost::shared_ptr;
 #include "pi_wigner_config.hpp"
 
 struct Estimator {
-    virtual double operator() (arma::mat x) = 0;
+    arma::vec final_values_real, final_values_imag;
+    virtual void operator() (boost::shared_ptr<Configuration> x, unsigned block_num) = 0;
+    virtual void process() = 0;
 };
 
 struct PE_estimator : public Estimator {
     shared_ptr<Potential> pot;
     PE_estimator() {}
-    PE_estimator(shared_ptr<Potential> V) : pot(V) {}
-    double operator()(arma::mat x) {
-        return (*pot)(x);
+    PE_estimator(shared_ptr<Potential> V, unsigned nblocks=10) : pot(V) {
+        values_real_plus = values_real_minus = values_imag_plus = values_imag_minus = arma::zeros<arma::vec>(nblocks);
+        i_real_plus = i_real_minus = i_imag_plus = i_imag_minus = arma::zeros<arma::vec>(nblocks);
     }
+    void operator()(boost::shared_ptr<Configuration> x, unsigned block_num) {
+        std::complex<double> weight = x->weight();
+        if (weight.real() >= 0) {
+            i_real_plus(block_num) += weight.real();
+            values_real_plus(block_num) += weight.real() * (*pot)(x->pos());
+        } else {
+            i_real_minus(block_num) += weight.real();
+            values_real_minus(block_num) += weight.real() * (*pot)(x->pos());
+        }
+        if (weight.imag() >= 0) {
+            i_imag_plus(block_num) += weight.imag();
+            values_imag_plus(block_num) += weight.imag() * (*pot)(x->pos());
+        } else {
+            i_imag_minus(block_num) += weight.imag();
+            values_imag_minus(block_num) += weight.imag() * (*pot)(x->pos());
+        }
+    }
+    void process() {
+        arma::vec total_ampl_real = i_real_plus + i_real_minus;
+        if (arma::any(i_real_minus)>0)
+            final_values_real = 0.5 * (
+                values_real_plus/total_ampl_real + values_real_minus/i_real_minus % (1. - i_real_plus/total_ampl_real)
+                + values_real_minus/total_ampl_real + values_real_plus/i_real_plus % (1. - i_real_minus/total_ampl_real)
+                );
+        else
+            final_values_real = values_real_plus/total_ampl_real;
+
+        arma::vec total_ampl_imag = i_imag_plus + i_imag_minus;
+        if (arma::any(i_imag_minus)>0)
+            final_values_imag = 0.5/total_ampl_real % (
+                values_imag_plus/total_ampl_imag + values_imag_minus/i_imag_minus % (1. - i_imag_plus/total_ampl_imag)
+                + values_imag_minus/total_ampl_imag + values_imag_plus/i_imag_plus % (1. - i_imag_minus/total_ampl_imag)
+                );
+        else if (arma::any(total_ampl_imag) != 0)
+            final_values_imag = values_imag_plus/total_ampl_imag;
+        else
+            final_values_imag = arma::zeros<arma::vec>(i_real_plus.n_rows);
+    }
+
+private:
+    arma::vec values_real_plus, values_real_minus;
+    arma::vec values_imag_plus, values_imag_minus;
+    arma::vec i_real_plus, i_real_minus;
+    arma::vec i_imag_plus, i_imag_minus;
 };
 
 class Simulation {
@@ -74,7 +120,7 @@ class Simulation {
     virtual void get_system(pt::ptree sys) {
         get_potential(sys.get_child("potential"));
         if(sys.get<string>("estimator") == "potential")
-            estimator = shared_ptr<Estimator>(new PE_estimator(pot));
+            estimator = shared_ptr<Estimator>(new PE_estimator(pot, nblocks));
     }
 
     virtual void get_potential(pt::ptree pot_tree) {
@@ -226,16 +272,25 @@ public:
         arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms-1);
         arma::cx_vec total_weight = arma::zeros<arma::cx_vec>(nblocks);
         ofs<<c->header();
-        for(unsigned b=0; b<nblocks; b++)
-            for(unsigned i=0; i<nMC/(world_size * nblocks); i++) {
+        for(unsigned i=0; i<nMC/(world_size * nblocks); i++)
+            for(unsigned b=0; b<nblocks; b++) {
                 for(unsigned m=0; m<moves.size(); m++)
                     (*moves[m])(c, atoms);
 
                 ofs<<c->repr(pot);
-                est(b) += c->weight() * (*estimator)(c->pos());
+                (*estimator)(c, b);
+                est(b) += c->weight() * (*pot)(c->pos());
                 total_weight(b) += c->weight();
             }
         est /= total_weight;
+        estimator->process();
+
+        arma::vec est_global_real = arma::zeros<arma::vec>(nblocks);
+        arma::vec est_global_imag = arma::zeros<arma::vec>(nblocks);
+        MPI_Reduce(estimator->final_values_real.memptr(), est_global_real.memptr(), nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(estimator->final_values_imag.memptr(), est_global_imag.memptr(), nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        est_global_real /= world_size;
+        est_global_imag /= world_size;
 
         arma::cx_vec est_global = arma::zeros<arma::cx_vec>(nblocks);
         MPI_Reduce(est.memptr(), est_global.memptr(), 2*nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -250,9 +305,13 @@ public:
             global_moves_accepted.push_back(accepted);
         }
         if(!my_id) {
-            std::complex<double> mean_val = arma::mean(est_global);
-            double real_std_val = arma::stddev(arma::real(est_global));
-            double imag_std_val = arma::stddev(arma::imag(est_global));
+            std::complex<double> mean_val = std::complex<double>(arma::mean(est_global_real), arma::mean(est_global_imag));
+            double real_std_val = arma::stddev(est_global_real)/std::sqrt(nblocks);
+            double imag_std_val = arma::stddev(est_global_imag)/std::sqrt(nblocks);
+            std::cout<<mean_val.real()<<'\t'<<mean_val.imag()<<'\t'<<real_std_val<<'\t'<<imag_std_val<<std::endl;
+            mean_val = arma::mean(est_global);
+            real_std_val = arma::stddev(arma::real(est_global))/std::sqrt(nblocks);
+            imag_std_val = arma::stddev(arma::imag(est_global))/std::sqrt(nblocks);
             std::cout<<mean_val.real()<<'\t'<<mean_val.imag()<<'\t'<<real_std_val<<'\t'<<imag_std_val<<std::endl;
             for(unsigned m=0; m<move_names.size(); m++)
                 std::cout<<move_names[m]<<'\t'<<(double)global_moves_accepted[m]/global_moves_tried[m]<<std::endl;
@@ -266,8 +325,8 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-    //generator.seed(static_cast<unsigned>(my_id) + 213);           // For reproducibility
-    generator.seed(static_cast<unsigned>(my_id) + time(NULL));
+    generator.seed(static_cast<unsigned>(my_id) + 213);           // For reproducibility
+    //generator.seed(static_cast<unsigned>(my_id) + time(NULL));
 
     if(argc<2) {
         if (!my_id)
