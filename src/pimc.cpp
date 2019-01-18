@@ -25,65 +25,7 @@ using boost::shared_ptr;
 #include "propagators.hpp"
 #include "configuration.hpp"
 #include "pi_wigner_config.hpp"
-
-struct Estimator {
-    arma::vec final_values_real, final_values_imag;
-    virtual void operator() (boost::shared_ptr<Configuration> x, unsigned block_num) = 0;
-    virtual void process() = 0;
-};
-
-struct PE_estimator : public Estimator {
-    shared_ptr<Potential> pot;
-    PE_estimator() {}
-    PE_estimator(shared_ptr<Potential> V, unsigned nblocks=10) : pot(V) {
-        values_real_plus = values_real_minus = values_imag_plus = values_imag_minus = arma::zeros<arma::vec>(nblocks);
-        i_real_plus = i_real_minus = i_imag_plus = i_imag_minus = arma::zeros<arma::vec>(nblocks);
-    }
-    void operator()(boost::shared_ptr<Configuration> x, unsigned block_num) {
-        std::complex<double> weight = x->weight();
-        if (weight.real() >= 0) {
-            i_real_plus(block_num) += weight.real();
-            values_real_plus(block_num) += weight.real() * (*pot)(x->pos());
-        } else {
-            i_real_minus(block_num) += weight.real();
-            values_real_minus(block_num) += weight.real() * (*pot)(x->pos());
-        }
-        if (weight.imag() >= 0) {
-            i_imag_plus(block_num) += weight.imag();
-            values_imag_plus(block_num) += weight.imag() * (*pot)(x->pos());
-        } else {
-            i_imag_minus(block_num) += weight.imag();
-            values_imag_minus(block_num) += weight.imag() * (*pot)(x->pos());
-        }
-    }
-    void process() {
-        arma::vec total_ampl_real = i_real_plus + i_real_minus;
-        if (arma::any(i_real_minus)>0)
-            final_values_real = 0.5 * (
-                values_real_plus/total_ampl_real + values_real_minus/i_real_minus % (1. - i_real_plus/total_ampl_real)
-                + values_real_minus/total_ampl_real + values_real_plus/i_real_plus % (1. - i_real_minus/total_ampl_real)
-                );
-        else
-            final_values_real = values_real_plus/total_ampl_real;
-
-        arma::vec total_ampl_imag = i_imag_plus + i_imag_minus;
-        if (arma::any(i_imag_minus)>0)
-            final_values_imag = 0.5/total_ampl_real % (
-                values_imag_plus/total_ampl_imag + values_imag_minus/i_imag_minus % (1. - i_imag_plus/total_ampl_imag)
-                + values_imag_minus/total_ampl_imag + values_imag_plus/i_imag_plus % (1. - i_imag_minus/total_ampl_imag)
-                );
-        else if (arma::any(total_ampl_imag) != 0)
-            final_values_imag = values_imag_plus/total_ampl_imag;
-        else
-            final_values_imag = arma::zeros<arma::vec>(i_real_plus.n_rows);
-    }
-
-private:
-    arma::vec values_real_plus, values_real_minus;
-    arma::vec values_imag_plus, values_imag_minus;
-    arma::vec i_real_plus, i_real_minus;
-    arma::vec i_imag_plus, i_imag_minus;
-};
+#include "estimators.hpp"
 
 class Simulation {
     int my_id, world_size;
@@ -109,23 +51,23 @@ class Simulation {
         natoms = params.get<unsigned>("num_atoms");
         nprops = params.get<unsigned>("num_propagators");
         mass = params.get<double>("mass", 1);
+        get_potential(params.get_child("potential"));
         initial_config = params.get<std::string>("initial_configuration", "");
+        estimator = Estimator::create(params.get<std::string>("estimator"));
+        estimator->setup(params, 10);
+        std::cout<<"Basic parameters obtained"<<std::endl;
     }
 
     virtual void get_MC_params(pt::ptree params) {
         nMC = params.get<unsigned>("num_MC");
         nblocks = params.get<unsigned>("num_blocks");
-    }
-
-    virtual void get_system(pt::ptree sys) {
-        get_potential(sys.get_child("potential"));
-        if(sys.get<string>("estimator") == "potential")
-            estimator = shared_ptr<Estimator>(new PE_estimator(pot, nblocks));
+        std::cout<<"Monte Carlo parameters done"<<std::endl;
     }
 
     virtual void get_potential(pt::ptree pot_tree) {
-        pot = Potential::create(pot_tree.get<string>("<xmlattr>.name"));
+        pot = Potential::create(pot_tree.get<std::string>("<xmlattr>.name"));
         pot->setup(pot_tree);
+        std::cout<<"Potential setup done"<<std::endl;
     }
 
     std::vector<double> get_dts(pt::ptree prop) {
@@ -248,11 +190,10 @@ public:
     void load(const char *fname) {
         pt::ptree tree;
         read_xml(fname, tree);
+        get_MC_params(tree.get_child("simulation.monte_carlo"));
         type = tree.get<string>("simulation.type");
         output_name = tree.get<string>("simulation.output_file");
         get_parameters(tree.get_child("simulation.parameters"));
-        get_MC_params(tree.get_child("simulation.monte_carlo"));
-        get_system(tree.get_child("simulation.system"));
         get_propagator(tree.get_child("simulation.propagators"), tree.get_child("simulation.parameters"));
         get_moves(tree.get_child("simulation.moves"), tree.get_child("simulation.parameters"));
     }
@@ -272,16 +213,19 @@ public:
         arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms-1);
         arma::cx_vec total_weight = arma::zeros<arma::cx_vec>(nblocks);
         ofs<<c->header();
-        for(unsigned i=0; i<nMC/(world_size * nblocks); i++)
+        for(unsigned i=0; i<nMC/(world_size * nblocks); i++) {
             for(unsigned b=0; b<nblocks; b++) {
                 for(unsigned m=0; m<moves.size(); m++)
                     (*moves[m])(c, atoms);
 
                 ofs<<c->repr(pot);
                 (*estimator)(c, b);
-                est(b) += c->weight() * (*pot)(c->pos());
+                //est(b) += c->weight() * (*pot)(c->pos());
+                est(b) += c->weight() * estimator->eval(c);
                 total_weight(b) += c->weight();
             }
+            std::cout<<i<<" of "<<nMC/(world_size * nblocks)<<std::endl;
+        }
         est /= total_weight;
         estimator->process();
 
@@ -308,11 +252,11 @@ public:
             std::complex<double> mean_val = std::complex<double>(arma::mean(est_global_real), arma::mean(est_global_imag));
             double real_std_val = arma::stddev(est_global_real)/std::sqrt(nblocks);
             double imag_std_val = arma::stddev(est_global_imag)/std::sqrt(nblocks);
-            std::cout<<mean_val.real()<<'\t'<<mean_val.imag()<<'\t'<<real_std_val<<'\t'<<imag_std_val<<std::endl;
+            std::cout<<"IGNoR estimation = "<<mean_val.real()<<'\t'<<mean_val.imag()<<'\t'<<real_std_val<<'\t'<<imag_std_val<<std::endl;
             mean_val = arma::mean(est_global);
             real_std_val = arma::stddev(arma::real(est_global))/std::sqrt(nblocks);
             imag_std_val = arma::stddev(arma::imag(est_global))/std::sqrt(nblocks);
-            std::cout<<mean_val.real()<<'\t'<<mean_val.imag()<<'\t'<<real_std_val<<'\t'<<imag_std_val<<std::endl;
+            std::cout<<"Normal evaluation = "<<mean_val.real()<<'\t'<<mean_val.imag()<<'\t'<<real_std_val<<'\t'<<imag_std_val<<std::endl;
             for(unsigned m=0; m<move_names.size(); m++)
                 std::cout<<move_names[m]<<'\t'<<(double)global_moves_accepted[m]/global_moves_tried[m]<<std::endl;
         }
