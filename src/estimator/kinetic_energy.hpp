@@ -16,9 +16,10 @@ public:
     }
     double eval(boost::shared_ptr<Configuration> x) {
         double val = 0;
+        double tau = beta/x->num_beads();
         for (unsigned i=0; i<x->num_beads(); i++)
-            val += arma::norm(x->time_slice(i) - x->time_slice(i+1), 2) * x->num_beads() / beta;
-        return 1./(2.*beta) + val;
+            val += arma::accu((x->time_slice(i) - x->time_slice((i+1)%x->num_beads())) % (x->time_slice(i) - x->time_slice((i+1)%x->num_beads())));
+        return x->num_dims()*x->num_atoms()/(2.*tau) - val / (2 * x->num_beads() * tau * tau);
     }
 };
 

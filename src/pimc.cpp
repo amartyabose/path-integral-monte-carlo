@@ -27,10 +27,14 @@ using boost::shared_ptr;
 #include "pi_wigner_config.hpp"
 #include "estimators.hpp"
 
+#include "highfive/H5DataSet.hpp"
+#include "highfive/H5DataSpace.hpp"
+#include "highfive/H5File.hpp"
+
 class Simulation {
     int my_id, world_size;
 
-    std::string type, output_name, initial_config;
+    string type, output_name, dataset_name, initial_config;
 
     unsigned ndimensions, natoms, nprops;
     double beta, mass;
@@ -43,7 +47,8 @@ class Simulation {
     std::vector<boost::shared_ptr<Propagator> > props;
     std::vector<unsigned> bead_nums;
 
-    shared_ptr<Estimator> estimator;
+    std::vector<shared_ptr<Estimator>> estimator;
+    std::vector<string> estimator_names;
 
     virtual void get_parameters(pt::ptree params) {
         beta = params.get<double>("beta");
@@ -52,9 +57,14 @@ class Simulation {
         nprops = params.get<unsigned>("num_propagators");
         mass = params.get<double>("mass", 1);
         get_potential(params.get_child("potential"));
-        initial_config = params.get<std::string>("initial_configuration", "");
-        estimator = Estimator::create(params.get<std::string>("estimator"));
-        estimator->setup(params, 10);
+        initial_config = params.get<string>("initial_configuration", "");
+        string est_names = params.get<string>("estimator");
+        boost::split(estimator_names, est_names, [](char c) {return c==',';});
+        for(auto& est: estimator_names) {
+            boost::trim(est);
+            estimator.push_back(Estimator::create(est));
+            estimator.back()->setup(params, nblocks);
+        }
         std::cout<<"Basic parameters obtained"<<std::endl;
     }
 
@@ -65,7 +75,7 @@ class Simulation {
     }
 
     virtual void get_potential(pt::ptree pot_tree) {
-        pot = Potential::create(pot_tree.get<std::string>("<xmlattr>.name"));
+        pot = Potential::create(pot_tree.get<string>("<xmlattr>.name"));
         pot->setup(pot_tree);
         std::cout<<"Potential setup done"<<std::endl;
     }
@@ -192,7 +202,8 @@ public:
         read_xml(fname, tree);
         get_MC_params(tree.get_child("simulation.monte_carlo"));
         type = tree.get<string>("simulation.type");
-        output_name = tree.get<string>("simulation.output_file");
+        output_name = tree.get<string>("simulation.output_file", "");
+        dataset_name = tree.get<string>("simulation.dataset", "");
         get_parameters(tree.get_child("simulation.parameters"));
         get_propagator(tree.get_child("simulation.propagators"), tree.get_child("simulation.parameters"));
         get_moves(tree.get_child("simulation.moves"), tree.get_child("simulation.parameters"));
@@ -206,39 +217,67 @@ public:
             c.reset(new WignerConfiguration(natoms, ndimensions, bead_nums, mass));
         if (initial_config != "")
             c->load_config(initial_config);
-        std::ofstream ofs(output_name + boost::lexical_cast<string>(my_id));
         arma::vec moves_accepted = arma::zeros<arma::vec>(moves.size());
         arma::vec moves_tried = arma::zeros<arma::vec>(moves.size());
-        arma::cx_vec est = arma::zeros<arma::cx_vec>(nblocks);
         arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms-1);
-        arma::cx_vec total_weight = arma::zeros<arma::cx_vec>(nblocks);
-        ofs<<c->header();
+        std::vector<size_t> dims = {nMC, c->num_atoms() * c->num_dims() + 2 + estimator.size()};
+        std::vector<std::vector<double> > data(dims[0]/world_size);
+        boost::shared_ptr<HighFive::File> file;
+        HighFive::Group group;
+        boost::shared_ptr<HighFive::DataSet> dataset;
+        if (output_name!="") {
+            file.reset(new HighFive::File(output_name + ".h5", HighFive::File::OpenOrCreate, HighFive::MPIOFileDriver(MPI_COMM_WORLD, MPI_INFO_NULL)));
+            try {
+                group = file->getGroup(type);
+            } catch (...) {
+                group = file->createGroup(type);
+            }
+            dataset.reset(new HighFive::DataSet(group.createDataSet<double>(dataset_name, HighFive::DataSpace(dims))));
+            string names = "Re(weight), Im(weight)";
+            for(unsigned a=0; a<c->num_atoms(); a++)
+                for(unsigned d=0; d<c->num_dims(); d++)
+                    names += ", position atom"+boost::lexical_cast<string>(a)+" dim"+boost::lexical_cast<string>(d);
+            names += ", potential energy, kinetic energy";
+            HighFive::Attribute attr = dataset->createAttribute<string>("column names", HighFive::DataSpace::From(names));
+            attr.write(names);
+        }
+        unsigned num = 0;
+        std::vector<double> test(c->num_atoms() * c->num_dims() + 2 + estimator.size());
         for(unsigned i=0; i<nMC/(world_size * nblocks); i++) {
             for(unsigned b=0; b<nblocks; b++) {
                 for(unsigned m=0; m<moves.size(); m++)
                     (*moves[m])(c, atoms);
 
-                ofs<<c->repr(pot);
-                (*estimator)(c, b);
-                //est(b) += c->weight() * (*pot)(c->pos());
-                est(b) += c->weight() * estimator->eval(c);
-                total_weight(b) += c->weight();
+                for(auto est: estimator)
+                    (*est)(c, b);
+
+                arma::mat pos = c->pos();
+                test[0] = c->weight().real();
+                test[1] = c->weight().imag();
+                for(unsigned col=0; col<pos.n_cols; col++)
+                    for(unsigned row=0; row<pos.n_rows; row++)
+                        test[2 + col*pos.n_rows + row] = pos(row, col);
+
+                for(unsigned e=0; e<estimator.size(); e++)
+                    test[2 + pos.n_cols * pos.n_rows + e] = estimator[e]->eval(c);
+                data[num] = test;
+                num++;
             }
             std::cout<<i<<" of "<<nMC/(world_size * nblocks)<<std::endl;
         }
-        est /= total_weight;
-        estimator->process();
 
-        arma::vec est_global_real = arma::zeros<arma::vec>(nblocks);
-        arma::vec est_global_imag = arma::zeros<arma::vec>(nblocks);
-        MPI_Reduce(estimator->final_values_real.memptr(), est_global_real.memptr(), nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        MPI_Reduce(estimator->final_values_imag.memptr(), est_global_imag.memptr(), nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        est_global_real /= world_size;
-        est_global_imag /= world_size;
-
-        arma::cx_vec est_global = arma::zeros<arma::cx_vec>(nblocks);
-        MPI_Reduce(est.memptr(), est_global.memptr(), 2*nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        est_global /= world_size;
+        std::vector<arma::vec> est_global_real, est_global_imag;
+        for(auto est: estimator) {
+            est->process();
+            arma::vec global_real = arma::zeros<arma::vec>(nblocks);
+            arma::vec global_imag = arma::zeros<arma::vec>(nblocks);
+            MPI_Reduce(est->final_values_real.memptr(), global_real.memptr(), nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+            MPI_Reduce(est->final_values_imag.memptr(), global_imag.memptr(), nblocks, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+            global_real /= world_size;
+            global_imag /= world_size;
+            est_global_real.push_back(global_real);
+            est_global_imag.push_back(global_imag);
+        }
 
         std::vector<unsigned> global_moves_tried, global_moves_accepted;
         for(unsigned m=0; m<move_names.size(); m++) {
@@ -248,17 +287,20 @@ public:
             global_moves_tried.push_back(tried);
             global_moves_accepted.push_back(accepted);
         }
+
+        if(output_name!="")
+            dataset->select({my_id*data.size(), 0}, {data.size(), c->num_atoms() * c->num_dims() + 2 + estimator.size()}).write(data);
+
         if(!my_id) {
-            std::complex<double> mean_val = std::complex<double>(arma::mean(est_global_real), arma::mean(est_global_imag));
-            double real_std_val = arma::stddev(est_global_real)/std::sqrt(nblocks);
-            double imag_std_val = arma::stddev(est_global_imag)/std::sqrt(nblocks);
-            std::cout<<"IGNoR estimation = "<<mean_val.real()<<'\t'<<mean_val.imag()<<'\t'<<real_std_val<<'\t'<<imag_std_val<<std::endl;
-            mean_val = arma::mean(est_global);
-            real_std_val = arma::stddev(arma::real(est_global))/std::sqrt(nblocks);
-            imag_std_val = arma::stddev(arma::imag(est_global))/std::sqrt(nblocks);
-            std::cout<<"Normal evaluation = "<<mean_val.real()<<'\t'<<mean_val.imag()<<'\t'<<real_std_val<<'\t'<<imag_std_val<<std::endl;
             for(unsigned m=0; m<move_names.size(); m++)
                 std::cout<<move_names[m]<<'\t'<<(double)global_moves_accepted[m]/global_moves_tried[m]<<std::endl;
+
+            for(unsigned i=0; i<estimator_names.size(); i++) {
+                std::complex<double> mean_val = std::complex<double>(arma::mean(est_global_real[i]), arma::mean(est_global_imag[i]));
+                double real_std_val = arma::stddev(est_global_real[i])/std::sqrt(nblocks);
+                double imag_std_val = arma::stddev(est_global_imag[i])/std::sqrt(nblocks);
+                std::cout<<estimator_names[i]+" = "<<mean_val.real()<<"+/-"<<real_std_val<<'\t'<<mean_val.imag()<<"+/-"<<imag_std_val<<std::endl;
+            }
         }
     }
 };
