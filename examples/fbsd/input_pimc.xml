@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<simulation>
+  <type>pimc</type>
+  <output_file>fbsd</output_file>
+  <dataset>beta=1 props=5</dataset>
+  <parameters>
+    <beta>1</beta>
+    <num_atoms>1</num_atoms>
+    <num_dimensions>1</num_dimensions>
+    <num_propagators>5</num_propagators>
+    <mass>1</mass>
+    <potential name = "PolynomialPotential">
+      <coeffs>0 0 1 -0.1 0.1</coeffs>
+    </potential>
+    <estimator>PotentialEnergy, KineticEnergy</estimator>
+  </parameters>
+  <propagators>
+    <propagator name="G6" number="5"/>
+  </propagators>
+  <moves>
+    <Translate>
+      <length>3</length>
+    </Translate>
+    <BrownianBridge>
+      <length>15</length>
+      <attempts>5</attempts>
+    </BrownianBridge>
+  </moves>
+  <monte_carlo>
+    <num_MC>800000</num_MC>
+    <num_blocks>10</num_blocks>
+  </monte_carlo>
+</simulation>

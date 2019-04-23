@@ -2,4 +2,4 @@ bin
 build
 release
 debug
-*.xml
+*.h5

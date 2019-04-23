@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<simulation>
+  <type>wigner</type>
+  <output_file>fbsd</output_file>
+  <dataset>beta=1 props=6</dataset>
+  <parameters>
+    <beta>1</beta>
+    <num_atoms>1</num_atoms>
+    <num_dimensions>1</num_dimensions>
+    <num_propagators>6</num_propagators>
+    <mass>1</mass>
+    <potential name = "PolynomialPotential">
+      <coeffs>0 0 1 -0.1 0.1</coeffs>
+    </potential>
+    <estimator>PotentialEnergy, KineticEnergy</estimator>
+  </parameters>
+  <propagators>
+    <propagator name="G6" number="5"/>
+    <propagator name="WignerG2" number="1" dt="0.05" gamma="1" nx="3" np="4" alpha="1.22"/>
+  </propagators>
+  <moves>
+    <Translate>
+      <length>3</length>
+    </Translate>
+    <BrownianBridge>
+      <length>16</length>
+      <attempts>5</attempts>
+    </BrownianBridge>
+  </moves>
+  <monte_carlo>
+    <num_MC>800000</num_MC>
+    <num_blocks>10</num_blocks>
+  </monte_carlo>
+</simulation>
