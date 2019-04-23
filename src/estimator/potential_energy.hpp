@@ -7,7 +7,7 @@
 class PotentialEnergy : public Estimator {
 public:
     shared_ptr<Potential> pot;
-    void setup(pt::ptree params, unsigned nblocks=10) {
+    void setup(std::string type_, pt::ptree params, unsigned nblocks=10) {
         pt::ptree pot_tree = params.get_child("potential");
         pot = Potential::create(pot_tree.get<string>("<xmlattr>.name"));
         pot->setup(pot_tree);

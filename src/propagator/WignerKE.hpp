@@ -19,10 +19,17 @@ public:
         mass = params.get<double>("mass", 1);
     }
     double operator()(const arma::cube &momentum) {
-        double ke = arma::accu(momentum%momentum)/(2.*mass);
-        double var = (beta-tau) * ke;
-        return exp_series(var, np);
-        //return std::exp(-beta * ke) * exp_series(var, np);
+        //double ke = arma::accu(momentum%momentum)/(2.*mass);
+        //double var = (beta-tau) * ke;
+        //return exp_series(var, np);
+        double ans = 1;
+        arma::mat p = momentum.slice(0);
+        for(unsigned atom=0; atom<p.n_rows; atom++) {
+            double ke = arma::dot(p.row(atom), p.row(atom))/(2.*mass);
+            double var = (beta - tau) * ke;
+            ans *= exp_series(var, np);
+        }
+        return ans;
     }
 };
 

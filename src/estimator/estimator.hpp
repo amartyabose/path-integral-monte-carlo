@@ -20,7 +20,7 @@ class Estimator {
     static std::map<std::string, EstimatorFactory*>& get_factory();
 public:
     arma::vec final_values_real, final_values_imag;
-    virtual void setup(pt::ptree params, unsigned nblocks=10) = 0;
+    virtual void setup(std::string type, pt::ptree params, unsigned nblocks=10) = 0;
     virtual double eval(boost::shared_ptr<Configuration> x) = 0;
     virtual void operator() (boost::shared_ptr<Configuration> x, unsigned block_num) {
         std::complex<double> weight = x->weight();

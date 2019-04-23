@@ -37,6 +37,7 @@ public:
     virtual arma::mat pos() const;
     virtual std::string header() const;
     virtual std::string repr(const boost::shared_ptr<Potential> &V) const;
+    virtual std::vector<double> to_vec() const;
 };
 
 #endif

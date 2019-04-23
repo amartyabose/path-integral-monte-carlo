@@ -63,21 +63,18 @@ class Simulation {
         for(auto& est: estimator_names) {
             boost::trim(est);
             estimator.push_back(Estimator::create(est));
-            estimator.back()->setup(params, nblocks);
+            estimator.back()->setup(type, params, nblocks);
         }
-        std::cout<<"Basic parameters obtained"<<std::endl;
     }
 
     virtual void get_MC_params(pt::ptree params) {
         nMC = params.get<unsigned>("num_MC");
         nblocks = params.get<unsigned>("num_blocks");
-        std::cout<<"Monte Carlo parameters done"<<std::endl;
     }
 
     virtual void get_potential(pt::ptree pot_tree) {
         pot = Potential::create(pot_tree.get<string>("<xmlattr>.name"));
         pot->setup(pot_tree);
-        std::cout<<"Potential setup done"<<std::endl;
     }
 
     std::vector<double> get_dts(pt::ptree prop) {
@@ -220,29 +217,8 @@ public:
         arma::vec moves_accepted = arma::zeros<arma::vec>(moves.size());
         arma::vec moves_tried = arma::zeros<arma::vec>(moves.size());
         arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms-1);
-        std::vector<size_t> dims = {nMC, c->num_atoms() * c->num_dims() + 2 + estimator.size()};
-        std::vector<std::vector<double> > data(dims[0]/world_size);
-        boost::shared_ptr<HighFive::File> file;
-        HighFive::Group group;
-        boost::shared_ptr<HighFive::DataSet> dataset;
-        if (output_name!="") {
-            file.reset(new HighFive::File(output_name + ".h5", HighFive::File::OpenOrCreate, HighFive::MPIOFileDriver(MPI_COMM_WORLD, MPI_INFO_NULL)));
-            try {
-                group = file->getGroup(type);
-            } catch (...) {
-                group = file->createGroup(type);
-            }
-            dataset.reset(new HighFive::DataSet(group.createDataSet<double>(dataset_name, HighFive::DataSpace(dims))));
-            string names = "Re(weight), Im(weight)";
-            for(unsigned a=0; a<c->num_atoms(); a++)
-                for(unsigned d=0; d<c->num_dims(); d++)
-                    names += ", position atom"+boost::lexical_cast<string>(a)+" dim"+boost::lexical_cast<string>(d);
-            names += ", potential energy, kinetic energy";
-            HighFive::Attribute attr = dataset->createAttribute<string>("column names", HighFive::DataSpace::From(names));
-            attr.write(names);
-        }
+        std::vector<std::vector<double> > data(nMC/world_size);
         unsigned num = 0;
-        std::vector<double> test(c->num_atoms() * c->num_dims() + 2 + estimator.size());
         for(unsigned i=0; i<nMC/(world_size * nblocks); i++) {
             for(unsigned b=0; b<nblocks; b++) {
                 for(unsigned m=0; m<moves.size(); m++)
@@ -251,19 +227,14 @@ public:
                 for(auto est: estimator)
                     (*est)(c, b);
 
-                arma::mat pos = c->pos();
-                test[0] = c->weight().real();
-                test[1] = c->weight().imag();
-                for(unsigned col=0; col<pos.n_cols; col++)
-                    for(unsigned row=0; row<pos.n_rows; row++)
-                        test[2 + col*pos.n_rows + row] = pos(row, col);
-
+                std::vector<double> test = c->to_vec();
                 for(unsigned e=0; e<estimator.size(); e++)
-                    test[2 + pos.n_cols * pos.n_rows + e] = estimator[e]->eval(c);
+                    test.push_back(estimator[e]->eval(c));
                 data[num] = test;
                 num++;
             }
-            std::cout<<i<<" of "<<nMC/(world_size * nblocks)<<std::endl;
+            if(!my_id)
+                std::cout<<i<<" of "<<nMC/(world_size * nblocks)<<std::endl;
         }
 
         std::vector<arma::vec> est_global_real, est_global_imag;
@@ -288,8 +259,21 @@ public:
             global_moves_accepted.push_back(accepted);
         }
 
-        if(output_name!="")
-            dataset->select({my_id*data.size(), 0}, {data.size(), c->num_atoms() * c->num_dims() + 2 + estimator.size()}).write(data);
+        if(output_name!="") {
+            std::vector<size_t> dims = {nMC, data[0].size()};
+            HighFive::File file(output_name + ".h5", HighFive::File::OpenOrCreate, HighFive::MPIOFileDriver(MPI_COMM_WORLD, MPI_INFO_NULL));
+            HighFive::Group group;
+            try {
+                group = file.getGroup(type);
+            } catch (...) {
+                group = file.createGroup(type);
+            }
+            HighFive::DataSet dataset(group.createDataSet<double>(dataset_name, HighFive::DataSpace(dims)));
+            string names = c->header();
+            HighFive::Attribute attr = dataset.createAttribute<string>("column names", HighFive::DataSpace::From(names));
+            attr.write(names);
+            dataset.select({my_id*data.size(), 0}, {data.size(), data[0].size()}).write(data);
+        }
 
         if(!my_id) {
             for(unsigned m=0; m<move_names.size(); m++)
