@@ -1,36 +1,24 @@
 #ifndef _WIGNER_KE_HPP
 #define _WIGNER_KE_HPP
 
-#include <boost/shared_ptr.hpp>
+#include <armadillo>
+
 #include "../utilities.hpp"
 #include "propagator.hpp"
 
 class WignerKE : public Propagator {
-    double mass, beta;
-    unsigned np;
+    double    beta;
+    unsigned  np;
+    arma::vec mass;
+
 public:
-    WignerKE() { num_total_beads = 2; mass = 1;}
-    virtual void set_params(boost::shared_ptr<Potential> pot, double Tau, pt::ptree::value_type p, pt::ptree params) {
-        V   = pot;
-        np = p.second.get<unsigned>("<xmlattr>.np", 0);
-        tau = p.second.get<double>("<xmlattr>.dt") / (num_total_beads - 1.);
-        //beta = params.get<double>("beta");
-        beta = p.second.get<double>("<xmlattr>.alpha");
-        mass = params.get<double>("mass", 1);
+    WignerKE() {
+        num_total_beads = 2;
+        mass            = 1;
     }
-    double operator()(const arma::cube &momentum) {
-        //double ke = arma::accu(momentum%momentum)/(2.*mass);
-        //double var = (beta-tau) * ke;
-        //return exp_series(var, np);
-        double ans = 1;
-        arma::mat p = momentum.slice(0);
-        for(unsigned atom=0; atom<p.n_rows; atom++) {
-            double ke = arma::dot(p.row(atom), p.row(atom))/(2.*mass);
-            double var = (beta - tau) * ke;
-            ans *= exp_series(var, np);
-        }
-        return ans;
-    }
+    void   set_params(std::shared_ptr<Potential> pot, double Tau, pt::ptree::value_type p, arma::vec mass,
+                      double beta) override;
+    double operator()(const arma::cube &momentum) override;
 };
 
 REGISTER_TYPE_GENERAL(WignerKE, Propagator)

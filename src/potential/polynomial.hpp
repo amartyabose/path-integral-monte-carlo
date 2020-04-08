@@ -1,37 +1,19 @@
 #ifndef _POLYNOMIAL_HPP_
 #define _POLYNOMIAL_HPP_
 
-#include <string>
 #include <vector>
-using std::string;
-using std::vector;
 
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
-
-#include "potential.hpp"
 #include "../utilities.hpp"
+#include "potential.hpp"
 
 class PolynomialPotential : public Potential {
-    vector<double> coeffs;
-public:
-    void setup(pt::ptree node) {
-        string coeffs_string = node.get<string>("coeffs");
-        vector<string> coeff_vec;
-        boost::split(coeff_vec, coeffs_string, boost::is_any_of("\t "));
-        for(unsigned i=0; i<coeff_vec.size(); i++)
-            coeffs.push_back(boost::lexical_cast<double>(coeff_vec[i]));
-    }
+    std::vector<double> coeffs;
 
-    double operator()(arma::mat x) {
-        double pe = 0;
-        arma::mat temp = arma::ones<arma::mat>(arma::size(x));
-        for(unsigned i=0; i<coeffs.size(); i++) {
-            pe += coeffs[i] * arma::accu(temp);
-            temp = temp % x;
-        }
-        return pe;
-    }
+public:
+    void setup(pt::ptree node) override;
+
+    double               operator()(arma::mat const &x) override;
+    std::complex<double> operator()(arma::cx_mat const &x) override;
 };
 
 REGISTER_TYPE_GENERAL(PolynomialPotential, Potential)

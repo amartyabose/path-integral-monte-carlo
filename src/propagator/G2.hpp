@@ -9,10 +9,8 @@
 class G2 : public Propagator {
 public:
     G2() { num_total_beads = 2; }
-    double operator()(const arma::cube &conf) {
-        double total_amplitude = - tau/2. * ((*V)(conf(arma::span::all, arma::span(0), arma::span::all)) + (*V)(conf(arma::span::all, arma::span(1), arma::span::all)));
-        return std::exp(total_amplitude);
-    }
+    double     operator()(const arma::cube &conf) override;
+    arma::cube derivative(const arma::cube &conf) override;
 };
 
 REGISTER_TYPE_GENERAL(G2, Propagator)

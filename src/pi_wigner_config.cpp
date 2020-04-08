@@ -2,12 +2,15 @@
 #include <complex>
 #include <string>
 
+#include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "pi_wigner_config.hpp"
 
-WignerConfiguration::WignerConfiguration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums, double mass) : Configuration(natoms, ndimensions, bead_nums, mass) {
-    momentum = arma::zeros<arma::mat>(natoms, ndimensions);
+WignerConfiguration::WignerConfiguration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums,
+                                         arma::vec mass, arma::mat bead_specific_mass)
+    : Configuration(natoms, ndimensions, bead_nums, mass, bead_specific_mass) {
+    momentum   = arma::zeros<arma::mat>(natoms, ndimensions);
     wigner_pos = arma::zeros<arma::mat>(natoms, ndimensions);
 }
 
@@ -24,9 +27,7 @@ void WignerConfiguration::set_momentum(unsigned atom_num, unsigned dim, double v
     momentum(atom_num, dim) = value;
 }
 
-arma::mat WignerConfiguration::pos() const {
-    return wigner_pos;
-}
+arma::mat WignerConfiguration::pos() const { return wigner_pos; }
 
 void WignerConfiguration::shift(unsigned atom_num, arma::vec shift_amt) {
     Configuration::shift(atom_num, shift_amt);
@@ -34,44 +35,23 @@ void WignerConfiguration::shift(unsigned atom_num, arma::vec shift_amt) {
 }
 
 std::complex<double> WignerConfiguration::weight() const {
-    std::complex<double> I(0,1);
-    return std::exp(-I*arma::accu(momentum % (time_slice(0)-time_slice(num_beads()-2))));
+    std::complex<double> I(0, 1);
+    return std::exp(-I * arma::accu(momentum % (time_slice(0) - time_slice(num_beads() - 2))));
 }
 
-std::string WignerConfiguration::header() const {
-    std::string names = "Re(weight), Im(weight)";
-    for(unsigned a=0; a<num_atoms(); a++)
-        for(unsigned d=0; d<num_dims(); d++) {
-            names += ", position atom"+boost::lexical_cast<std::string>(a)+" dim"+boost::lexical_cast<std::string>(d);
-            names += ", momentum atom"+boost::lexical_cast<std::string>(a)+" dim"+boost::lexical_cast<std::string>(d);
-        }
-    names += ", potential energy, kinetic energy";
-    return names;
-}
-
-std::string WignerConfiguration::repr(const boost::shared_ptr<Potential> &V) const {
-    std::string data = boost::lexical_cast<std::string>(weight().real()) + "\t";
-
-    if(wigner_pos.n_cols==1)
-        for(unsigned r=0; r<wigner_pos.n_rows; r++)
-            for(unsigned c=0; c<wigner_pos.n_cols; c++)
-                data += boost::lexical_cast<std::string>(wigner_pos(r, c)) + "\t" + boost::lexical_cast<std::string>(momentum(r,c)) + "\t";
-
-    data += boost::lexical_cast<std::string>((*V)(pos())) + "\t" + boost::lexical_cast<std::string>(arma::accu(momentum%momentum)/(2.*mass));
-
-    return data + "\n";
-}
-
-std::vector<double> WignerConfiguration::to_vec() const {
-    std::vector<double> vec;
-    arma::mat t0 = time_slice(0);
-    vec.push_back(weight().real());
-    vec.push_back(weight().imag());
-    if(t0.n_cols==1)
-        for(unsigned r=0; r<t0.n_rows; r++)
-            for(unsigned c=0; c<t0.n_cols; c++) {
-                vec.push_back(wigner_pos(r, c));
-                vec.push_back(momentum(r, c));
-            }
-    return vec;
+std::string WignerConfiguration::repr(int frame_cnt) const {
+    std::string output = std::to_string(num_atoms()) + "\n" + std::to_string(frame_cnt) + "\n";
+    for (unsigned r = 0; r < wigner_pos.n_rows; r++) {
+        output += "AT\t";
+        for (unsigned c = 0; c < wigner_pos.n_cols; c++)
+            output += (boost::format("%.5e\t") % wigner_pos(r, c)).str();
+        for (int k = 0; k < 3 - wigner_pos.n_cols; k++)
+            output += (boost::format("%.5e\t") % 0).str();
+        for (unsigned c = 0; c < momentum.n_cols; c++)
+            output += (boost::format("%.5e\t") % momentum(r, c)).str();
+        for (int k = 0; k < 3 - wigner_pos.n_cols; k++)
+            output += (boost::format("%.5e\t") % 0).str();
+        output += "\n";
+    }
+    return output;
 }

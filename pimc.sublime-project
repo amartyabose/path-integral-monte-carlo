@@ -1,0 +1,29 @@
+{
+    "folders":
+    [
+        {
+            "path": ".",
+            "name": "PIMC",
+            "index_include_patterns": ["*.cpp", ".hpp"]
+        }
+    ],
+    "settings":
+    {
+        "ClangFormat":
+        {
+            "format_on_save": true,
+            "style": "File"
+        }
+    },
+    "build_systems":
+    [
+       {
+            "name": "CMake - Release",
+            "shell_cmd": "cmake -H$project_path -B$project_path/build -DCMAKE_BUILD_TYPE=Release && cmake --build $project_path/build"
+        },
+        {
+            "name": "CMake - Debug",
+            "shell_cmd": "cmake -H$project_path -B$project_path/debug -DCMAKE_BUILD_TYPE=Debug && cmake --build $project_path/debug"
+        },
+    ]
+}

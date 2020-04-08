@@ -1,5 +1,6 @@
+tags
 bin
 build
-release
 debug
-*.h5
+examples/*/pimc*
+examples/*/wigner*

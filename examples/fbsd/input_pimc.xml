@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <simulation>
   <type>pimc</type>
-  <output_file>fbsd</output_file>
-  <dataset>beta=1 props=5</dataset>
   <parameters>
+    <units system="atomic"/>
     <beta>1</beta>
     <num_atoms>1</num_atoms>
     <num_dimensions>1</num_dimensions>
@@ -12,7 +11,6 @@
     <potential name = "PolynomialPotential">
       <coeffs>0 0 1 -0.1 0.1</coeffs>
     </potential>
-    <estimator>PotentialEnergy, KineticEnergy</estimator>
   </parameters>
   <propagators>
     <propagator name="G6" number="5"/>
@@ -27,7 +25,27 @@
     </BrownianBridge>
   </moves>
   <monte_carlo>
-    <num_MC>800000</num_MC>
+    <num_ICs>100000</num_ICs>
     <num_blocks>10</num_blocks>
   </monte_carlo>
+  <output each_node="No" each_block="No" progressive="Yes">
+    <output_folder>pimc.beta1.G6.props5</output_folder>
+    <phasespace histogram="Yes">Yes</phasespace>
+    <estimators>
+      <PotentialEnergy/>
+      <KineticEnergy/>
+      <VirialKineticEnergy/>
+      <PositionCorrelation/>
+    </estimators>
+  </output>
+  <logging>
+    <file>
+      <master level="info"/>
+      <others level="info"/>
+    </file>
+    <terminal>
+      <master level="info"/>
+      <others level="critical"/>
+    </terminal>
+  </logging>
 </simulation>

@@ -2,11 +2,11 @@
 #define _POTENTIAL_H_
 
 #include <map>
+#include <memory>
 
-#include <boost/shared_ptr.hpp>
-#include <boost/property_tree/xml_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <boost/foreach.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/xml_parser.hpp>
 namespace pt = boost::property_tree;
 
 #include <armadillo>
@@ -14,16 +14,22 @@ namespace pt = boost::property_tree;
 class Potential;
 
 struct PotentialFactory {
-    virtual Potential* create() = 0;
+    virtual std::shared_ptr<Potential> create() = 0;
 };
 
 class Potential {
-    static std::map<std::string, PotentialFactory*>& get_factory();
+    static std::map<std::string, PotentialFactory *> &get_factory();
+
 public:
-    virtual void setup(pt::ptree node) = 0;
-    virtual double operator()(arma::mat x) = 0;
+    virtual void                 setup(pt::ptree node)             = 0;
+    virtual double               operator()(arma::mat const &x)    = 0;
+    virtual std::complex<double> operator()(arma::cx_mat const &x) = 0;
+
+    virtual arma::mat derivative(arma::mat const &x);
+
     static void registerType(const std::string &name, PotentialFactory *factory);
-    static boost::shared_ptr<Potential> create(const std::string &name);
+
+    static std::shared_ptr<Potential> create(const std::string &name);
 };
 
 #endif

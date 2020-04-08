@@ -1,34 +1,22 @@
 #ifndef _KE_H_
 #define _KE_H_
 
+#include "../configuration.hpp"
 #include "../utilities.hpp"
 #include "estimator.hpp"
-#include "../pi_wigner_config.hpp"
 
 class KineticEnergy : public Estimator {
 public:
-    double beta;
-    int num_prop;
+    double      beta;
     std::string type;
-    void setup(std::string type_, pt::ptree params, unsigned nblocks=10) {
-        type = type_;
-        beta = params.get<double>("beta");
-        num_prop = params.get<int>("num_propagators");
-        values_real_plus = values_real_minus = values_imag_plus = values_imag_minus = arma::zeros<arma::vec>(nblocks);
-        i_real_plus = i_real_minus = i_imag_plus = i_imag_minus = arma::zeros<arma::vec>(nblocks);
+
+    void setup(std::string type_, arma::vec mass_, double beta_, unsigned num_beads_, pt::ptree node) override {
+        type   = type_;
+        beta   = beta_;
+        mass   = mass_;
+        n_rows = n_cols = 1;
     }
-    double eval(boost::shared_ptr<Configuration> x) {
-        if (type == "pimc" || type == "pimd") {
-            double val = 0;
-            double tau = beta/x->num_beads();
-            for (unsigned i=0; i<x->num_beads(); i++)
-                val += arma::accu((x->time_slice(i) - x->time_slice((i+1)%x->num_beads())) % (x->time_slice(i) - x->time_slice((i+1)%x->num_beads())));
-            return x->num_dims()*x->num_atoms()/(2.*tau) - val / (2 * x->num_beads() * tau * tau);
-        } else {
-            WignerConfiguration *conf = dynamic_cast<WignerConfiguration*>(x.get());
-            return arma::accu(conf->get_momentum() % conf->get_momentum())/2;
-        }
-    }
+    arma::mat eval(std::shared_ptr<Configuration> const &x) override;
 };
 
 REGISTER_TYPE_GENERAL(KineticEnergy, Estimator)

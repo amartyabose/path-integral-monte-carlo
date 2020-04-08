@@ -1,19 +1,17 @@
 #ifndef _HARMONIC_HPP_
 #define _HARMONIC_HPP_
 
-#include "potential.hpp"
 #include "../utilities.hpp"
+#include "potential.hpp"
 
 class HarmonicOscillator : public Potential {
     double omega;
-public:
-    void setup(pt::ptree node) {
-        omega = node.get<double>("frequency");
-    }
 
-    double operator() (arma::mat x) {
-        return 0.5 * omega * omega * arma::accu(x%x);
-    }
+public:
+    void setup(pt::ptree node) override;
+
+    double               operator()(arma::mat const &x) override;
+    std::complex<double> operator()(arma::cx_mat const &x) override;
 };
 
 REGISTER_TYPE_GENERAL(HarmonicOscillator, Potential)
