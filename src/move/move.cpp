@@ -1,5 +1,20 @@
 #include "move.hpp"
 
+void Move::check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new) {
+    moves_tried++;
+    double new_weight = 1, old_weight = 1;
+    for (unsigned p = 0; p < propagator.size(); p++) {
+        new_weight *= (*propagator[p])(conf_new->get_augmented_segment(p, p + 1));
+        if (new_weight < 0)
+            return;
+        old_weight *= (*propagator[p])(conf_old->get_augmented_segment(p, p + 1));
+    }
+    if (new_weight / old_weight > random_float(0, 1)) {
+        conf_old.reset(conf_new->duplicate());
+        moves_accepted++;
+    }
+}
+
 std::map<std::string, MoveFactory *> &Move::get_factory() {
     static std::map<std::string, MoveFactory *> factory;
     return factory;

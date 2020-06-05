@@ -41,8 +41,8 @@ void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
                     new_to_end = taue + (beta(atom) - tau1);
                 if (start_to_new < 0)
                     start_to_new = tau1 + (beta(atom) - tau0);
-                start_to_new /= mass(atom);
-                new_to_end /= mass(atom);
+                start_to_new /= mass(atom) / (units.hbar * units.hbar);
+                new_to_end /= mass(atom) / (units.hbar * units.hbar);
                 double start_to_end = start_to_new + new_to_end;
 
                 for (unsigned d = 0; d < conf->num_dims(); d++)

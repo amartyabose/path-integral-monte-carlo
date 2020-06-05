@@ -37,21 +37,7 @@ public:
     virtual void set_beta(arma::vec beta) {}
 
     virtual void operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) = 0;
-
-    virtual void check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new) {
-        moves_tried++;
-        double new_weight = 1, old_weight = 1;
-        for (unsigned p = 0; p < propagator.size(); p++) {
-            new_weight *= (*propagator[p])(conf_new->get_augmented_segment(p, p + 1));
-            if (new_weight < 0)
-                return;
-            old_weight *= (*propagator[p])(conf_old->get_augmented_segment(p, p + 1));
-        }
-        if (new_weight / old_weight > random_float(0, 1)) {
-            conf_old.reset(conf_new->duplicate());
-            moves_accepted++;
-        }
-    }
+    virtual void check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new);
 
     static void                  registerType(const std::string &name, MoveFactory *factory);
     static std::shared_ptr<Move> create(const std::string &name);

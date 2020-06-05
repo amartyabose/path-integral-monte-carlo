@@ -30,7 +30,7 @@ void Simulation::setup_output(pt::ptree output_node) {
         }
         output.estimators.push_back(Estimator::create(est_name));
         output.estimators.back()->setup(type, mass, beta, bead_nums.size(), o.second);
-        if (est_name == "PotentialEnergy" || est_name == "VirialKineticEnergy")
+        if (est_name == "PotentialEnergy" || est_name == "VirialKineticEnergy" || est_name == "CV")
             output.estimators.back()->pot = pot;
         else if (est_name.find("RPMD") == 0) {
             output.estimators.back()->pot                = pot;
@@ -143,14 +143,16 @@ void Simulation::get_parameters(pt::ptree params) {
     else if (beta_ && T_)
         throw std::runtime_error("Both beta or temperature provided.");
     else if (beta_)
-        beta = units.hbar * beta_.get();
+        beta = beta_.get();
     else if (T_)
-        beta = units.hbar / (units.kB * T_.get());
+        beta = 1.0 / (units.kB * T_.get());
     atom_specific_beta = beta * arma::ones<arma::vec>(natoms);
 
     std::string masses = params.get<std::string>("mass");
     mass               = arma::vec(masses);
-    if (mass.n_rows != natoms)
+    if (mass.n_rows == 1)
+        mass = mass(0) * natoms;
+    else if (mass.n_rows != natoms)
         throw std::runtime_error("Number of masses do not match the number of atoms.");
 
     get_potential(params.get_child("potential"));
@@ -294,8 +296,13 @@ void Simulation::run() {
     else if (type == "wigner")
         conf.reset(new WignerConfiguration(natoms, ndimensions, bead_nums, mass));
 
-    if (initial_config != "")
+    if (initial_config != "") {
+        spdlog::info("Loading initial configuration: " + initial_config);
         conf->load_config(initial_config);
+        spdlog::info("Initial configuration loaded.");
+        spdlog::info("Potential at the initial config = " +
+                     std::to_string(units.energy_to_non_base_units * (*pot)(conf->time_slice(0))));
+    }
 
     for (unsigned i = 0; i < nblocks; i++) {
         run_block(conf);

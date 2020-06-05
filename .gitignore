@@ -2,5 +2,6 @@ tags
 bin
 build
 debug
+*workspace
 examples/*/pimc*
 examples/*/wigner*

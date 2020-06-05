@@ -21,11 +21,19 @@ bool operator<(Dimensions const &d1, Dimensions const &d2) {
 void Units::setup(pt::ptree node) {
     double mass_default = 1, length_default = 1, time_default = 1, temperature_default = 1, force_default = -1,
            energy_default = -1;
-    if (node.get<std::string>("<xmlattr>.system", "") == "atomic") {
+    std::string unit_type = node.get<std::string>("<xmlattr>.system", "");
+    spdlog::info("Units: using " + unit_type + " unit system.");
+    if (unit_type == "atomic") {
         mass_default        = 9.1093837e-31;
         length_default      = 5.291772109e-11;
         time_default        = 2.41888432658e-17;
         temperature_default = 3.1577464e5;
+    } else if (unit_type == "real") {
+        mass_default        = 1e-3 / 6.02214e23;
+        length_default      = 1e-10;
+        time_default        = 1e-15;
+        temperature_default = 1;
+        energy_default      = 4184 / 6.02214e23;
     }
 
     scaling[Mass]        = node.get<double>("mass", mass_default);
@@ -40,8 +48,8 @@ void Units::setup(pt::ptree node) {
         scaling[Force]  = energy / scaling[Length];
     }
 
-    hbar = 1.0545718e-34 / (scale(Energy) * scale(Time));
-    kB   = 1.38064852e-23 / scale(Energy) * scale(Temperature);
+    hbar = 1.0545718e-34 / (scale(Energy, true) * scale(Time, true));
+    kB   = 1.38064852e-23 / scale(Energy, true) * scale(Temperature, true);
     spdlog::info("Units: hbar is " + std::to_string(hbar));
     spdlog::info("Units: kB is " + std::to_string(kB));
     force_to_base_units      = non_specialify(Force, 1);

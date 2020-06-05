@@ -154,15 +154,20 @@ void Output::finalize_block() {
     for (int i = 0; i < estimators.size(); i++) {
         est_vals[i][block_num] = process_ignor(i, block_num, estimator_names[i]);
         arma::cx_mat val       = est_vals[i][block_num];
+        if (estimator_names[i] == "CV") {
+            val = arma::zeros<arma::cx_mat>(1, 1);
+            val = est_vals[i][block_num](0, 0) - est_vals[i][block_num](1, 0) * est_vals[i][block_num](1, 0);
+        }
         if (each_node) {
             node_spec_est_stream.open(node_dir + "/" + estimator_names[i] + ".block." + std::to_string(block_num));
             write(node_spec_est_stream, val);
             node_spec_est_stream.close();
         }
 
-        arma::cx_mat global_val = arma::zeros<arma::cx_mat>(estimators[i]->n_rows, estimators[i]->n_cols);
-        MPI_Reduce(val.memptr(), global_val.memptr(), 2 * estimators[i]->n_rows * estimators[i]->n_cols, MPI_DOUBLE,
-                   MPI_SUM, 0, MPI_COMM_WORLD);
+        // arma::cx_mat global_val = arma::zeros<arma::cx_mat>(estimators[i]->n_rows, estimators[i]->n_cols);
+        arma::cx_mat global_val = arma::zeros<arma::cx_mat>(val.n_rows, val.n_cols);
+        MPI_Reduce(val.memptr(), global_val.memptr(), 2 * val.n_rows * val.n_cols, MPI_DOUBLE, MPI_SUM, 0,
+                   MPI_COMM_WORLD);
 
         if (!my_id) {
             global_val /= (double)world_size;
@@ -176,7 +181,7 @@ void Output::finalize_block() {
         }
 
         if (out_progressive && !my_id) {
-            val = arma::zeros<arma::cx_mat>(estimators[i]->n_rows, estimators[i]->n_cols);
+            val = arma::zeros<arma::cx_mat>(global_est_vals[i][0].n_rows, global_est_vals[i][0].n_cols);
             for (int j = 0; j <= block_num; j++)
                 val += global_est_vals[i][j];
             val /= block_num + 1;
@@ -210,7 +215,7 @@ void Output::finalize_block() {
 void Output::finalize_output() {
     if (!my_id)
         for (int i = 0; i < estimators.size(); i++) {
-            arma::cx_mat val = arma::zeros<arma::cx_mat>(estimators[i]->n_rows, estimators[i]->n_cols);
+            arma::cx_mat val = arma::zeros<arma::cx_mat>(global_est_vals[i][0].n_rows, global_est_vals[i][0].n_cols);
             for (int j = 0; j < block_num; j++)
                 val += global_est_vals[i][j];
             val /= block_num;

@@ -10,5 +10,5 @@ arma::mat PotentialEnergy::eval(std::shared_ptr<Configuration> const &x) {
         ans /= x->num_beads();
     } else
         ans = (*pot)(x->pos());
-    return ans * arma::ones<arma::mat>(n_rows, n_cols);
+    return ans * units.energy_to_non_base_units * arma::ones<arma::mat>(n_rows, n_cols);
 }

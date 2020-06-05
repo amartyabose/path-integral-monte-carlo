@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     try {
         read_xml(argv[1], tree, pt::xml_parser::trim_whitespace);
     } catch (...) {
-        spdlog::critical("xml input file is either mispelled or nonexistent");
+        spdlog::critical("xml input file is either misspelled or nonexistent");
         exit(1);
     }
 
