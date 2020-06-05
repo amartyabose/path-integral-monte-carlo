@@ -150,9 +150,10 @@ void Simulation::get_parameters(pt::ptree params) {
 
     std::string masses = params.get<std::string>("mass");
     mass               = arma::vec(masses);
-    if (mass.n_rows == 1)
-        mass = mass(0) * natoms;
-    else if (mass.n_rows != natoms)
+    if (mass.n_rows == 1) {
+        double m = mass(0);
+        mass     = m * arma::ones<arma::vec>(natoms);
+    } else if (mass.n_rows != natoms)
         throw std::runtime_error("Number of masses do not match the number of atoms.");
 
     get_potential(params.get_child("potential"));
