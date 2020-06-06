@@ -23,6 +23,7 @@ find_package (Boost COMPONENTS system filesystem REQUIRED)
 find_package (Armadillo REQUIRED)
 find_package (BLAS REQUIRED)
 find_package (LAPACK REQUIRED)
+find_package (Threads REQUIRED)
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${PROJECT_SOURCE_DIR} -std=c++11 -DARMA_DONT_USE_WRAPPER -DARMA_DONT_USE_HDF5 -DBOOST_ALLOW_DEPRECATED_HEADERS -DSPDLOG_COMPILED_LIB")
 set (SANITIZERS "-fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined -fsanitize=leak")
@@ -36,6 +37,7 @@ add_executable (pimc ${SOURCES})
 target_link_libraries (pimc
     ${Boost_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY}
     ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
     )
 
 find_package(MPI REQUIRED)
