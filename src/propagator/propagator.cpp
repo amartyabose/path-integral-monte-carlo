@@ -13,5 +13,4 @@ std::shared_ptr<Propagator> Propagator::create(const std::string &name) {
         exit(1);
     }
     return get_factory()[name]->create();
-    // return std::shared_ptr<Propagator>(get_factory()[name]->create());
 }

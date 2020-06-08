@@ -17,8 +17,7 @@ public:
         mass            = 1;
     }
     double get_tau(unsigned atom) override { return (2. * mass(atom) + tau * gamma) / gamma; }
-    void   set_params(std::shared_ptr<Potential> pot, double Tau, pt::ptree::value_type p, arma::vec mass,
-                      double beta) override;
+    void   set_params(double Tau, pt::ptree::value_type p, arma::vec mass, double beta) override;
     double operator()(const arma::cube &conf) override;
 };
 

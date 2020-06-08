@@ -12,6 +12,7 @@ namespace pt = boost::property_tree;
 #include <boost/algorithm/string.hpp>
 #include <boost/optional.hpp>
 
+#include "boundary_conditions/boundary_conditions.hpp"
 #include "configuration.hpp"
 #include "estimator/estimator.hpp"
 #include "move/move.hpp"
@@ -43,9 +44,9 @@ class Simulation {
 
     std::vector<std::string> move_names;
 
-    unsigned                   nIC, nblocks;
-    std::shared_ptr<Potential> pot;
-    std::vector<unsigned>      bead_nums;
+    unsigned nIC, nblocks;
+
+    std::vector<unsigned> bead_nums;
 
     std::vector<std::shared_ptr<Propagator>> props;
 

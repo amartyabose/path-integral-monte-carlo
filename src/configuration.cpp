@@ -6,6 +6,7 @@
 
 #include "spdlog/spdlog.h"
 
+#include "boundary_conditions/boundary_conditions.hpp"
 #include "configuration.hpp"
 #include "random.hpp"
 
@@ -20,8 +21,9 @@ Configuration::Configuration(unsigned natoms, unsigned ndimensions, std::vector<
 void Configuration::load_config(std::string filename) {
     arma::mat pos;
     pos.load(filename);
+    arma::mat wrapped_pos = bc->wrap_coordinates(pos);
     for (unsigned b = 0; b < positions.n_cols; b++)
-        positions(arma::span::all, arma::span(b), arma::span::all) = pos;
+        positions(arma::span::all, arma::span(b), arma::span::all) = wrapped_pos;
 }
 
 void Configuration::random_config() {
@@ -34,10 +36,18 @@ void Configuration::random_config() {
 void Configuration::augmented_set(unsigned atom_num, unsigned time_ind, unsigned dim, double value) {
     positions(atom_num, time_ind, dim) = value;
     if (type_of_polymers[atom_num] == 'c' && time_ind == 0)
-        // positions(atom_num, num_beads(atom_num), dim) = value;
         positions(atom_num, num_augmented_beads(), dim) = value;
 }
 
+void Configuration::augmented_set(unsigned atom_num, unsigned time_ind, arma::vec value) {
+    for (unsigned d = 0; d < num_dims(); d++) {
+        positions(atom_num, time_ind, d) = value(d);
+        if (type_of_polymers[atom_num] == 'c' && time_ind == 0)
+            positions(atom_num, num_augmented_beads(), d) = value(d);
+    }
+}
+
+// Not used. Is this correct?????
 void Configuration::shift_time_bead(unsigned time_ind, arma::mat vals) {
     positions(arma::span::all, arma::span(time_ind), arma::span::all) += vals;
     if (!time_ind)
@@ -45,8 +55,12 @@ void Configuration::shift_time_bead(unsigned time_ind, arma::mat vals) {
 }
 
 void Configuration::shift(unsigned atom_num, arma::vec shift_amt) {
-    for (unsigned time_ind = 0; time_ind < positions.n_cols; time_ind++)
-        positions.tube(atom_num, time_ind) += shift_amt;
+    for (unsigned time_ind = 0; time_ind < positions.n_cols; time_ind++) {
+        arma::vec pos     = positions.tube(atom_num, time_ind);
+        arma::vec new_pos = bc->wrap_vector(pos + shift_amt);
+
+        positions.tube(atom_num, time_ind) = new_pos;
+    }
 }
 
 unsigned Configuration::num_dims() const { return positions.n_slices; }
@@ -63,6 +77,10 @@ unsigned Configuration::num_atoms() const { return positions.n_rows; }
 
 double Configuration::augmented_bead_position(unsigned atom_num, unsigned time_ind, unsigned dim) const {
     return arma::as_scalar(positions(atom_num, time_ind, dim));
+}
+
+arma::vec Configuration::augmented_bead_position(unsigned atom_num, unsigned time_ind) const {
+    return positions.tube(atom_num, time_ind);
 }
 
 arma::vec Configuration::bead_position(unsigned atom_num, unsigned time_ind) const {
@@ -98,9 +116,9 @@ arma::mat Configuration::pos() const { return time_slice(0); }
 arma::mat Configuration::get_momentum() const { return arma::zeros<arma::mat>(1, num_dims()); }
 
 std::string Configuration::repr(int frame_cnt) const {
-    std::string output = std::to_string(num_atoms() * num_beads()) + "\n" + std::to_string(frame_cnt) + "\n";
-    for (unsigned slices = 0; slices < num_beads(); slices++) {
-        arma::mat slice = time_slice(slices);
+    std::string output = std::to_string(num_atoms() * (num_beads() - 1)) + "\n" + std::to_string(frame_cnt) + "\n";
+    for (unsigned slices = 0; slices < num_beads() - 1; slices++) {
+        arma::mat slice = bc->center_box(time_slice(slices));
         for (unsigned r = 0; r < slice.n_rows; r++) {
             output += "AT\t";
             for (unsigned c = 0; c < slice.n_cols; c++)

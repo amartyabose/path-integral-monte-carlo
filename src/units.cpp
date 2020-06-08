@@ -19,10 +19,11 @@ bool operator<(Dimensions const &d1, Dimensions const &d2) {
 }
 
 void Units::setup(pt::ptree node) {
+    spdlog::info("Units setup.");
     double mass_default = 1, length_default = 1, time_default = 1, temperature_default = 1, force_default = -1,
            energy_default = -1;
     std::string unit_type = node.get<std::string>("<xmlattr>.system", "");
-    spdlog::info("Units: using " + unit_type + " unit system.");
+    spdlog::info("\tusing " + unit_type + " unit system.");
     if (unit_type == "atomic") {
         mass_default        = 9.1093837e-31;
         length_default      = 5.291772109e-11;
@@ -50,12 +51,12 @@ void Units::setup(pt::ptree node) {
 
     hbar = 1.0545718e-34 / (scale(Energy, true) * scale(Time, true));
     kB   = 1.38064852e-23 / scale(Energy, true) * scale(Temperature, true);
-    spdlog::info("Units: hbar is " + std::to_string(hbar));
-    spdlog::info("Units: kB is " + std::to_string(kB));
+    spdlog::info("\thbar is " + std::to_string(hbar));
+    spdlog::info("\tkB is " + std::to_string(kB));
     force_to_base_units      = non_specialify(Force, 1);
     energy_to_non_base_units = specialify(Energy, 1);
-    spdlog::info("Units: force in base units is " + std::to_string(force_to_base_units));
-    spdlog::info("Units: energy in default units is " + std::to_string(energy_to_non_base_units));
+    spdlog::info("\tforce in base units is " + std::to_string(force_to_base_units));
+    spdlog::info("\tenergy in default units is " + std::to_string(energy_to_non_base_units));
 }
 
 Units units;

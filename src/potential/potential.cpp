@@ -31,3 +31,5 @@ arma::mat Potential::derivative(arma::mat const &x) {
         }
     return ans;
 }
+
+std::shared_ptr<Potential> pot;

@@ -10,7 +10,7 @@ void Translate::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom
     arma::vec step(dims);
     for (unsigned atom = 0; atom < atom_nums.n_rows; atom++) {
         for (unsigned i = 0; i < dims; i++)
-            step(i) = random_float(-1, 1) * max_step; //(atom_nums(atom), i);
+            step(i) = random_float(-max_step, max_step);
 
         std::shared_ptr<Configuration> conf_new(conf->duplicate());
         conf_new->shift(atom_nums(atom), step);

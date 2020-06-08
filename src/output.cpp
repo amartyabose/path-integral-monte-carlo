@@ -19,6 +19,11 @@ void Output::setup(int rank, int size, int nblocks) {
         else
             boost::filesystem::create_directory("./" + output_folder);
 
+        bool any_hist = false;
+        for (auto const &h : histogram)
+            if (!any_hist && h)
+                boost::filesystem::create_directory(output_folder + "/histograms");
+
         if (out_phasespace)
             boost::filesystem::create_directory(output_folder + "/phasespace");
 
@@ -74,6 +79,12 @@ void Output::add_config(std::shared_ptr<Configuration> const &conf) {
             est_im_vals_plus[i][block_num] += weight.imag() * val;
         else
             est_im_vals_minus[i][block_num] += weight.imag() * val;
+
+        if (histogram[i]) {
+            std::ofstream ofs(output_folder + "/histograms/" + estimator_names[i] + ".node." + std::to_string(my_id),
+                              std::ios::app);
+            ofs << conf->weight().real() << '\t' << val.as_row();
+        }
     }
 
     weight_per_block += conf->weight();

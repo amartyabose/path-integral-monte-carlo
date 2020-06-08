@@ -15,8 +15,7 @@ double BrownianBridge::get_temp(unsigned bead_num, unsigned atom) {
 void BrownianBridge::setup(pt::ptree::value_type node, double beta_, arma::vec mass_) {
     num_beads_moved = node.second.get<unsigned>("length");
     num_attempts    = node.second.get<unsigned>("attempts");
-    // beta            = beta_;
-    mass = mass_;
+    mass            = mass_;
 }
 
 void BrownianBridge::set_beta(arma::vec beta_) { beta = beta_; }
@@ -43,16 +42,21 @@ void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
                     start_to_new = tau1 + (beta(atom) - tau0);
                 start_to_new /= mass(atom) / (units.hbar * units.hbar);
                 new_to_end /= mass(atom) / (units.hbar * units.hbar);
-                double start_to_end = start_to_new + new_to_end;
 
+                double start_to_end = start_to_new + new_to_end;
+                auto   sigma_bb     = std::sqrt(start_to_new * new_to_end / start_to_end);
+
+                auto start_bead = conf_new->augmented_bead_position(atom, (nbeads + b - 1) % nbeads);
+                auto end_bead   = conf_new->augmented_bead_position(atom, end);
+                auto disp       = bc->wrap_vector(end_bead - start_bead);
+
+                arma::vec mean_loc = start_bead + start_to_new * disp / start_to_end;
+
+                arma::vec new_pos = arma::zeros<arma::vec>(conf->num_dims());
                 for (unsigned d = 0; d < conf->num_dims(); d++)
-                    conf_new->augmented_set(
-                        atom, b, d,
-                        random_normal(
-                            ((new_to_end)*conf_new->augmented_bead_position(atom, (nbeads + b - 1) % nbeads, d) +
-                             start_to_new * conf_new->augmented_bead_position(atom, end, d)) /
-                                start_to_end,
-                            std::sqrt(start_to_new * new_to_end / start_to_end)));
+                    new_pos(d) = random_normal(mean_loc(d), sigma_bb);
+
+                conf_new->augmented_set(atom, b, bc->wrap_vector(new_pos));
             }
             check_amplitude(conf, conf_new);
         }

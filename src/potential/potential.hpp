@@ -11,6 +11,8 @@ namespace pt = boost::property_tree;
 
 #include <armadillo>
 
+#include "../boundary_conditions/boundary_conditions.hpp"
+
 class Potential;
 
 struct PotentialFactory {
@@ -31,5 +33,7 @@ public:
 
     static std::shared_ptr<Potential> create(const std::string &name);
 };
+
+extern std::shared_ptr<Potential> pot;
 
 #endif

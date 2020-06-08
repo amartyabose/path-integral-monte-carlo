@@ -26,6 +26,7 @@ public:
     virtual void           random_config();
     virtual Configuration *duplicate() { return new Configuration(*this); }
     void                   augmented_set(unsigned atom_num, unsigned time_ind, unsigned dim, double value);
+    void                   augmented_set(unsigned atom_num, unsigned time_ind, arma::vec value);
     virtual void           shift(unsigned atom_num, arma::vec shift_amt);
     virtual void           shift_time_bead(unsigned time_ind, arma::mat vals);
     unsigned               num_dims() const;
@@ -33,6 +34,7 @@ public:
     unsigned               num_augmented_beads() const;
     unsigned               num_atoms() const;
     double                 augmented_bead_position(unsigned atom_num, unsigned time_ind, unsigned dim) const;
+    arma::vec              augmented_bead_position(unsigned atom_num, unsigned time_ind) const;
     arma::vec              bead_position(unsigned atom_num, unsigned time_ind) const;
     arma::mat              necklace(unsigned atom_num) const;
     arma::mat              time_slice(unsigned time_ind) const;

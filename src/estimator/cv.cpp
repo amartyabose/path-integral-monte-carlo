@@ -13,7 +13,7 @@ arma::mat CV::eval(std::shared_ptr<Configuration> const &x) {
         ans /= x->num_beads();
         ans(1, 0) *= beta;
         ans(0, 0) *= beta * beta;
-        ans(0, 0) += x->num_dims() * x->num_atoms() / 2;
+        ans(0, 0) += x->num_dims() * x->num_atoms() / 2.0;
     } else
         spdlog::critical("CV not yet defined for Wigner calculations.");
     return ans;

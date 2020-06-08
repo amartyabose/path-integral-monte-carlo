@@ -19,7 +19,7 @@ struct Output {
 
     int                  world_size, my_id;
     std::complex<double> weight_per_block;
-    std::vector<bool>    ignor;
+    std::vector<bool>    ignor, histogram;
 
     std::vector<std::shared_ptr<Estimator>> estimators;
     std::vector<std::string>                estimator_names;

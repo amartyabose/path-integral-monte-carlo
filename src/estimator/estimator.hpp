@@ -29,8 +29,6 @@ public:
     arma::vec mass;
     arma::mat bead_specific_mass;
 
-    std::shared_ptr<Potential> pot;
-
     virtual void      setup(std::string type, arma::vec masses, double beta, unsigned num_beads, pt::ptree node) = 0;
     virtual arma::mat eval(std::shared_ptr<Configuration> const &x)                                              = 0;
 
