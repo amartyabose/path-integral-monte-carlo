@@ -31,8 +31,14 @@ int main(int argc, char **argv) {
     }
 
     Simulation sim(my_id, world_size);
-    sim.load(tree);
-    sim.run();
+    try {
+        sim.load(tree);
+        sim.run();
+    } catch (std::runtime_error &err) {
+        spdlog::critical(err.what());
+        MPI_Finalize();
+        exit(1);
+    }
 
     MPI_Finalize();
 }

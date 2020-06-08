@@ -12,6 +12,10 @@ protected:
     arma::vec  mass;
     arma::cube positions;
 
+    unsigned natoms, ndims;
+
+    std::vector<std::string> atom_names;
+
     std::vector<char> type_of_polymers; // 'c' for closed; 'o' for open
     // if type_of_polymers is 'c' for a particular atom,
     // then the first and last beads would be identical

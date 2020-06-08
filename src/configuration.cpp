@@ -10,17 +10,39 @@
 #include "configuration.hpp"
 #include "random.hpp"
 
-Configuration::Configuration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums, arma::vec m,
+Configuration::Configuration(unsigned natoms_, unsigned ndimensions_, std::vector<unsigned> bead_nums, arma::vec m,
                              arma::mat bead_specific_mass) {
     bead_num  = bead_nums;
-    positions = arma::zeros<arma::cube>(natoms, bead_nums.back() + 1, ndimensions);
-    type_of_polymers.resize(natoms, 'c');
-    mass = m;
+    positions = arma::zeros<arma::cube>(natoms_, bead_nums.back() + 1, ndimensions_);
+    type_of_polymers.resize(natoms_, 'c');
+    atom_names.resize(natoms_);
+    mass   = m;
+    natoms = natoms_;
+    ndims  = ndimensions_;
 }
 
 void Configuration::load_config(std::string filename) {
-    arma::mat pos;
-    pos.load(filename);
+    std::ifstream ifs(filename);
+
+    unsigned num_atoms_from_config;
+    ifs >> num_atoms_from_config;
+    if (num_atoms_from_config != natoms)
+        throw std::runtime_error("Number of atoms in the initial configuration file does not match the input file.");
+
+    arma::mat pos(natoms, ndims);
+    for (unsigned i = 0; i < natoms; i++) {
+        std::string name;
+        ifs >> name;
+        atom_names[i] = name;
+        for (unsigned d = 0; d < ndims; d++) {
+            double val;
+            ifs >> val;
+            pos(i, d) = val;
+        }
+    }
+
+    // arma::mat pos;
+    // pos.load(filename);
     arma::mat wrapped_pos = bc->wrap_coordinates(pos);
     for (unsigned b = 0; b < positions.n_cols; b++)
         positions(arma::span::all, arma::span(b), arma::span::all) = wrapped_pos;
@@ -63,7 +85,7 @@ void Configuration::shift(unsigned atom_num, arma::vec shift_amt) {
     }
 }
 
-unsigned Configuration::num_dims() const { return positions.n_slices; }
+unsigned Configuration::num_dims() const { return ndims; }
 
 unsigned Configuration::num_beads() const { return bead_num.size(); }
 
@@ -73,7 +95,7 @@ unsigned Configuration::num_augmented_beads() const {
     return positions.n_cols - 1;
 }
 
-unsigned Configuration::num_atoms() const { return positions.n_rows; }
+unsigned Configuration::num_atoms() const { return natoms; }
 
 double Configuration::augmented_bead_position(unsigned atom_num, unsigned time_ind, unsigned dim) const {
     return arma::as_scalar(positions(atom_num, time_ind, dim));
@@ -120,12 +142,12 @@ std::string Configuration::repr(int frame_cnt) const {
     for (unsigned slices = 0; slices < num_beads() - 1; slices++) {
         arma::mat slice = bc->center_box(time_slice(slices));
         for (unsigned r = 0; r < slice.n_rows; r++) {
-            output += "AT\t";
+            output += atom_names[r] + '\t';
             for (unsigned c = 0; c < slice.n_cols; c++)
                 output += (boost::format("%.5e\t") % slice(r, c)).str();
             for (int k = 0; k < 3 - slice.n_cols; k++)
                 output += (boost::format("%.5e\t") % 0).str();
-            output += "\n";
+            output += "slice" + std::to_string(slices + 1) + '\n';
         }
     }
     return output;

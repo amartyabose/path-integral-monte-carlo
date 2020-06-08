@@ -19,6 +19,10 @@ void Simulation::initialize_output(pt::ptree output_node) {
 
 void Simulation::setup_output(pt::ptree output_node) {
     spdlog::info("Creating estimators:");
+    burn = output_node.get<unsigned>("<xmlattr>.equilibration", 1000);
+    skip = output_node.get<unsigned>("<xmlattr>.skip", 20);
+    spdlog::info("\tEstimators would be measured after an equilibration of " + std::to_string(burn) +
+                 " steps, and would skip " + std::to_string(skip) + " MC steps in between.");
     for (auto const &o : output_node.get_child("estimators")) {
         std::string est_name    = o.first;
         std::string info_string = "\t" + est_name;
@@ -261,7 +265,8 @@ void Simulation::get_propagator(pt::ptree prop) {
     if (props.size() != nprops)
         throw std::runtime_error("number of propagators in <parameters> and <propagators> do not match");
 
-    spdlog::info("Propagators setup done. Total number of beads: " + std::to_string(bead_nums.back() + 1));
+    spdlog::info("Propagators setup done. Total number of beads: " + std::to_string(bead_nums.back() + 1) +
+                 " counting x(0) and x(\\beta) separately.");
 }
 
 void Simulation::get_moves(pt::ptree move_params) {
@@ -286,19 +291,13 @@ void Simulation::load(pt::ptree tree) {
     initialize_output(tree.get_child("simulation.output"));
     auto logging_node = tree.get_child_optional("simulation.logging");
     setup_logging(logging_node);
-    try {
-        if (type != "pimc" && type != "wigner")
-            throw std::runtime_error("Simulation type " + type + " is not supported.");
-        get_parameters(tree.get_child("simulation.parameters"));
-        get_propagator(tree.get_child("simulation.propagators"));
-        get_moves(tree.get_child("simulation.moves"));
-        get_MC_params(tree.get_child("simulation.monte_carlo"));
-        setup_output(tree.get_child("simulation.output"));
-    } catch (std::runtime_error &err) {
-        spdlog::critical(err.what());
-        MPI_Finalize();
-        exit(1);
-    }
+    if (type != "pimc" && type != "wigner")
+        throw std::runtime_error("Simulation type " + type + " is not supported.");
+    get_parameters(tree.get_child("simulation.parameters"));
+    get_propagator(tree.get_child("simulation.propagators"));
+    get_moves(tree.get_child("simulation.moves"));
+    get_MC_params(tree.get_child("simulation.monte_carlo"));
+    setup_output(tree.get_child("simulation.output"));
     spdlog::info("Finished loading settings");
 }
 
@@ -317,6 +316,13 @@ void Simulation::run() {
                      std::to_string(units.energy_to_non_base_units * (*pot)(conf->time_slice(0))));
     }
 
+    spdlog::info("Starting equilibration.");
+    arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms - 1);
+    for (unsigned i = 0; i < burn; i++)
+        for (auto const &m : moves)
+            (*m)(conf, atoms);
+
+    spdlog::info("Starting actual runs.");
     for (unsigned i = 0; i < nblocks; i++) {
         run_block(conf);
         output.finalize_block();
@@ -341,8 +347,9 @@ void Simulation::run() {
 void Simulation::run_block(std::shared_ptr<Configuration> &conf) {
     arma::uvec atoms = arma::regspace<arma::uvec>(0, natoms - 1);
     for (int i = 0; i < nIC; i++) {
-        for (auto const &m : moves)
-            (*m)(conf, atoms);
+        for (unsigned s = 0; s <= skip; s++)
+            for (auto const &m : moves)
+                (*m)(conf, atoms);
         output.add_config(conf);
     }
 }

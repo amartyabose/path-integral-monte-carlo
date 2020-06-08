@@ -17,11 +17,13 @@ struct Output {
 
     std::string type;
 
+    bool any_histogram_required = false;
+
     int                  world_size, my_id;
     std::complex<double> weight_per_block;
     std::vector<bool>    ignor, histogram;
 
-    std::vector<std::shared_ptr<Estimator>> estimators;
+    std::vector<std::shared_ptr<Estimator>> estimators, histograms;
     std::vector<std::string>                estimator_names;
     std::vector<std::vector<arma::cx_mat>>  est_vals;
     std::vector<std::vector<arma::cx_mat>>  global_est_vals;

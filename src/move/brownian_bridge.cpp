@@ -15,7 +15,7 @@ double BrownianBridge::get_temp(unsigned bead_num, unsigned atom) {
 void BrownianBridge::setup(pt::ptree::value_type node, double beta_, arma::vec mass_) {
     num_beads_moved = node.second.get<unsigned>("length");
     num_attempts    = node.second.get<unsigned>("attempts");
-    mass            = mass_;
+    lambda          = units.hbar * units.hbar / (2. * mass_);
 }
 
 void BrownianBridge::set_beta(arma::vec beta_) { beta = beta_; }
@@ -40,8 +40,8 @@ void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
                     new_to_end = taue + (beta(atom) - tau1);
                 if (start_to_new < 0)
                     start_to_new = tau1 + (beta(atom) - tau0);
-                start_to_new /= mass(atom) / (units.hbar * units.hbar);
-                new_to_end /= mass(atom) / (units.hbar * units.hbar);
+                start_to_new *= 2. * lambda(atom);
+                new_to_end *= 2. * lambda(atom);
 
                 double start_to_end = start_to_new + new_to_end;
                 auto   sigma_bb     = std::sqrt(start_to_new * new_to_end / start_to_end);

@@ -9,7 +9,7 @@ class BrownianBridge : public Move {
     unsigned  num_beads_moved;
     unsigned  num_attempts;
     arma::vec beta;
-    arma::vec mass;
+    arma::vec lambda;
     double    get_temp(unsigned bead_num, unsigned atom);
 
 public:
