@@ -14,7 +14,7 @@ arma::rowvec PeriodicBoundaryConditions::wrap_rowvector(arma::rowvec const &x) {
 
 arma::vec PeriodicBoundaryConditions::wrap_vector(arma::vec const &x) {
     arma::vec new_x = x;
-    for (unsigned d = 0; d < x.n_cols; d++)
+    for (unsigned d = 0; d < x.n_rows; d++)
         if (new_x(d) > box_size(d) / 2)
             new_x(d) -= box_size(d);
         else if (new_x(d) < -box_size(d) / 2)

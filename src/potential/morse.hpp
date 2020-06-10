@@ -10,7 +10,7 @@ class Morse : public Potential {
 public:
     void setup(pt::ptree node) override;
 
-    double               operator()(arma::mat const &x) override;
+    double               operator()(arma::mat const &x, unsigned index) override;
     std::complex<double> operator()(arma::cx_mat const &x) override;
 };
 

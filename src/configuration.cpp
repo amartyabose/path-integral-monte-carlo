@@ -41,11 +41,8 @@ void Configuration::load_config(std::string filename) {
         }
     }
 
-    // arma::mat pos;
-    // pos.load(filename);
-    arma::mat wrapped_pos = bc->wrap_coordinates(pos);
     for (unsigned b = 0; b < positions.n_cols; b++)
-        positions(arma::span::all, arma::span(b), arma::span::all) = wrapped_pos;
+        positions(arma::span::all, arma::span(b), arma::span::all) = pos;
 }
 
 void Configuration::random_config() {
@@ -81,7 +78,8 @@ void Configuration::shift(unsigned atom_num, arma::vec shift_amt) {
         arma::vec pos     = positions.tube(atom_num, time_ind);
         arma::vec new_pos = bc->wrap_vector(pos + shift_amt);
 
-        positions.tube(atom_num, time_ind) = new_pos;
+        for (unsigned d = 0; d < num_dims(); d++)
+            positions(atom_num, time_ind, d) = new_pos(d);
     }
 }
 
@@ -140,7 +138,7 @@ arma::mat Configuration::get_momentum() const { return arma::zeros<arma::mat>(1,
 std::string Configuration::repr(int frame_cnt) const {
     std::string output = std::to_string(num_atoms() * (num_beads() - 1)) + "\n" + std::to_string(frame_cnt) + "\n";
     for (unsigned slices = 0; slices < num_beads() - 1; slices++) {
-        arma::mat slice = bc->center_box(time_slice(slices));
+        arma::mat slice = time_slice(slices);
         for (unsigned r = 0; r < slice.n_rows; r++) {
             output += atom_names[r] + '\t';
             for (unsigned c = 0; c < slice.n_cols; c++)

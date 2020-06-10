@@ -23,9 +23,10 @@ class Potential {
     static std::map<std::string, PotentialFactory *> &get_factory();
 
 public:
-    virtual void                 setup(pt::ptree node)             = 0;
-    virtual double               operator()(arma::mat const &x)    = 0;
-    virtual std::complex<double> operator()(arma::cx_mat const &x) = 0;
+    virtual void                 setup(pt::ptree node) = 0;
+    virtual double               operator()(arma::mat const &x);
+    virtual double               operator()(arma::mat const &x, unsigned index) = 0;
+    virtual std::complex<double> operator()(arma::cx_mat const &x)              = 0;
 
     virtual arma::mat derivative(arma::mat const &x);
 
