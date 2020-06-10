@@ -7,7 +7,6 @@ double G2::operator()(const arma::cube &conf) {
     double total_amplitude = -tau / 2. *
                              ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
                               (*pot)(conf(arma::span::all, arma::span(1), arma::span::all)));
-    // return std::exp(total_amplitude);
     return total_amplitude;
 }
 
@@ -21,74 +20,32 @@ arma::cube G2::derivative(const arma::cube &conf) {
 }
 
 double G4::operator()(const arma::cube &conf) {
-    double total_amplitude = 1;
-    total_amplitude *= 4. / 3. *
-                           std::exp(-tau / 2. *
-                                    ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                                     2. * (*pot)(conf(arma::span::all, arma::span(1), arma::span::all)) +
-                                     (*pot)(conf(arma::span::all, arma::span(2), arma::span::all)))) -
-                       1. / 3. *
-                           std::exp(-tau * ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(2), arma::span::all))));
-    return std::log(total_amplitude);
+    double V1 = (*pot)(conf(arma::span::all, arma::span(0), arma::span::all));
+    double V2 = (*pot)(conf(arma::span::all, arma::span(1), arma::span::all));
+    double V3 = (*pot)(conf(arma::span::all, arma::span(2), arma::span::all));
+
+    double total_amplitude = std::log(4. / 3) - tau / 2. * (V1 + 2 * V2 + V3) +
+                             std::log(1. - 1. / 4 * std::exp(-tau / 2. * (V1 - 2 * V2 + V3)));
+
+    return total_amplitude;
 }
 
 arma::cube G4::derivative(const arma::cube &conf) {
-    arma::cube ans    = arma::zeros<arma::cube>(arma::size(conf));
-    double     factor = 1. / (*this)(conf);
-
-    ans(arma::span::all, arma::span(0), arma::span::all) =
-        4. / 3. *
-            std::exp(-tau / 2. *
-                     ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                      2. * (*pot)(conf(arma::span::all, arma::span(1), arma::span::all)) +
-                      (*pot)(conf(arma::span::all, arma::span(2), arma::span::all)))) *
-            (-tau / 2) * pot->derivative(conf(arma::span::all, arma::span(0), arma::span::all)) -
-        1. / 3. *
-            std::exp(-tau * ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                             (*pot)(conf(arma::span::all, arma::span(2), arma::span::all)))) *
-            (-tau) * pot->derivative(conf(arma::span::all, arma::span(0), arma::span::all));
-
-    ans(arma::span::all, arma::span(0), arma::span::all) =
-        4. / 3. *
-        std::exp(-tau / 2. *
-                 ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                  2. * (*pot)(conf(arma::span::all, arma::span(1), arma::span::all)) +
-                  (*pot)(conf(arma::span::all, arma::span(2), arma::span::all)))) *
-        (-tau) * pot->derivative(conf(arma::span::all, arma::span(0), arma::span::all));
-
-    ans(arma::span::all, arma::span(2), arma::span::all) =
-        4. / 3. *
-            std::exp(-tau / 2. *
-                     ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                      2. * (*pot)(conf(arma::span::all, arma::span(1), arma::span::all)) +
-                      (*pot)(conf(arma::span::all, arma::span(2), arma::span::all)))) *
-            (-tau / 2) * pot->derivative(conf(arma::span::all, arma::span(2), arma::span::all)) -
-        1. / 3. *
-            std::exp(-tau * ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                             (*pot)(conf(arma::span::all, arma::span(2), arma::span::all)))) *
-            (-tau) * pot->derivative(conf(arma::span::all, arma::span(2), arma::span::all));
-
-    return ans * factor;
+    arma::cube ans = arma::zeros<arma::cube>(arma::size(conf));
+    return ans;
 }
 
 double G6::operator()(const arma::cube &conf) {
-    double total_amplitude = 1;
-    total_amplitude *= 64. / 45. *
-                           std::exp(-tau * ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) / 2. +
-                                            (*pot)(conf(arma::span::all, arma::span(1), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(2), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(3), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(4), arma::span::all)) / 2.)) -
-                       4. / 9. *
-                           std::exp(-tau * ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                                            2. * (*pot)(conf(arma::span::all, arma::span(2), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(4), arma::span::all)))) +
-                       1. / 45. *
-                           std::exp(-2 * tau *
-                                    ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                                     (*pot)(conf(arma::span::all, arma::span(4), arma::span::all))));
-    return std::log(total_amplitude);
+    double V1 = (*pot)(conf(arma::span::all, arma::span(0), arma::span::all));
+    double V2 = (*pot)(conf(arma::span::all, arma::span(1), arma::span::all));
+    double V3 = (*pot)(conf(arma::span::all, arma::span(2), arma::span::all));
+    double V4 = (*pot)(conf(arma::span::all, arma::span(3), arma::span::all));
+    double V5 = (*pot)(conf(arma::span::all, arma::span(4), arma::span::all));
+
+    double total_amplitude = std::log(64. / 45) - tau * (V1 / 2. + V2 + V3 + V4 + V5 / 2.) +
+                             std::log(1. - 5. / 16 * std::exp(-tau * (V1 / 2. - V2 + V3 - V4 + V5 / 2.)) +
+                                      1. / 64 * std::exp(-tau * (3. / 2 * V1 - V2 - V3 - V4 + 3. / 2 * V5)));
+    return total_amplitude;
 }
 
 arma::cube G6::derivative(const arma::cube &conf) {
@@ -97,29 +54,20 @@ arma::cube G6::derivative(const arma::cube &conf) {
 }
 
 double G8::operator()(const arma::cube &conf) {
-    double total_amplitude = 1;
-    total_amplitude *= 54. / 35. *
-                           std::exp(-tau * ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) / 2. +
-                                            (*pot)(conf(arma::span::all, arma::span(1), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(2), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(3), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(4), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(5), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(6), arma::span::all)) / 2.)) -
-                       27. / 40. *
-                           std::exp(-tau * ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                                            2. * (*pot)(conf(arma::span::all, arma::span(2), arma::span::all)) +
-                                            2. * (*pot)(conf(arma::span::all, arma::span(4), arma::span::all)) +
-                                            (*pot)(conf(arma::span::all, arma::span(6), arma::span::all)))) +
-                       2. / 15. *
-                           std::exp(-tau * (1.5 * (*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                                            3 * (*pot)(conf(arma::span::all, arma::span(3), arma::span::all)) +
-                                            1.5 * (*pot)(conf(arma::span::all, arma::span(6), arma::span::all)))) -
-                       1. / 840. *
-                           std::exp(-3 * tau *
-                                    ((*pot)(conf(arma::span::all, arma::span(0), arma::span::all)) +
-                                     (*pot)(conf(arma::span::all, arma::span(6), arma::span::all))));
-    return std::log(total_amplitude);
+    double V1 = (*pot)(conf(arma::span::all, arma::span(0), arma::span::all));
+    double V2 = (*pot)(conf(arma::span::all, arma::span(1), arma::span::all));
+    double V3 = (*pot)(conf(arma::span::all, arma::span(2), arma::span::all));
+    double V4 = (*pot)(conf(arma::span::all, arma::span(3), arma::span::all));
+    double V5 = (*pot)(conf(arma::span::all, arma::span(4), arma::span::all));
+    double V6 = (*pot)(conf(arma::span::all, arma::span(5), arma::span::all));
+    double V7 = (*pot)(conf(arma::span::all, arma::span(6), arma::span::all));
+
+    double total_amplitude =
+        std::log(54. / 35) - tau * (V1 / 2. + V2 + V3 + V4 + V5 + V6 + V1 / 2.) +
+        std::log(1. - 7. / 16 * std::exp(-tau * (V1 / 2. - V2 + V3 - V4 + V5 - V6 + V7 / 2.)) +
+                 7. / 81 * std::exp(-tau * (V1 - V2 - V3 + 2 * V4 - V5 - V6 + V7)) +
+                 1. / (24 * 54) * std::exp(-tau * (5. / 2 * V1 - V2 - V3 - V4 - V5 - V6 + 5. / 2 * V2)));
+    return total_amplitude;
 }
 
 arma::cube G8::derivative(const arma::cube &conf) {

@@ -1,4 +1,5 @@
 #include "morse.hpp"
+#include "../boundary_conditions/boundary_conditions.hpp"
 
 void Morse::setup(pt::ptree node) {
     rmin          = node.get<double>("rmin");
@@ -7,12 +8,11 @@ void Morse::setup(pt::ptree node) {
     cutoff_radius = node.get<double>("cutoff_radius", -1.);
 }
 
-double Morse::operator()(arma::mat const &x) {
-    double pe = 0;
-    for (unsigned atom = 0; atom < x.n_rows; atom++) {
-        double exp_dist = (1. - std::exp(-alpha * (x(0, 0) - rmin)));
-        pe += D * exp_dist * exp_dist;
-    }
+double Morse::operator()(arma::mat const &x, unsigned index) {
+    arma::vec disp     = bc->wrap_vector(x.row(index));
+    double    dist     = arma::norm(disp);
+    double    exp_dist = (1. - std::exp(-alpha * (dist - rmin)));
+    double    pe       = D * exp_dist * exp_dist;
     return pe;
 }
 

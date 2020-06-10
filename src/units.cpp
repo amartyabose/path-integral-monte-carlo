@@ -35,6 +35,12 @@ void Units::setup(pt::ptree node) {
         time_default        = 1e-15;
         temperature_default = 1;
         energy_default      = 4184 / 6.02214e23;
+    } else if (unit_type == "realK") {
+        mass_default        = 1e-3 / 6.02214e23;
+        length_default      = 1e-10;
+        time_default        = 1e-15;
+        temperature_default = 1;
+        energy_default      = 0.002 * 4184 / 6.02214e23;
     }
 
     scaling[Mass]        = node.get<double>("mass", mass_default);

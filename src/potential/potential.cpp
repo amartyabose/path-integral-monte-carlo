@@ -15,6 +15,14 @@ std::shared_ptr<Potential> Potential::create(const std::string &name) {
     return get_factory()[name]->create();
 }
 
+double Potential::operator()(arma::mat const &x) {
+    double pe = 0.0;
+    for (unsigned atom = 0; atom < x.n_rows; atom++)
+        pe += (*this)(x, atom);
+
+    return pe;
+}
+
 arma::mat Potential::derivative(arma::mat const &x) {
     std::complex<double> epsilon(0, 1e-10);
 

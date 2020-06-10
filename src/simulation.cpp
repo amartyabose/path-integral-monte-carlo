@@ -176,6 +176,11 @@ void Simulation::get_parameters(pt::ptree params) {
         bc           = BoundaryConditions::create(bc_type);
         bc->setup(bounds);
         spdlog::info("\t" + bc_type + " created.");
+        if (bc_type == "PeriodicBoundaryConditions") {
+            arma::vec box = arma::vec(bounds.get<std::string>("box_size"));
+            spdlog::info("\tThe particle number density is " + std::to_string(natoms / (box(0) * box(1) * box(2))) +
+                         ".");
+        }
     }
 
     initial_config = params.get<std::string>("initial_configuration", "");

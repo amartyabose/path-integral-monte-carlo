@@ -14,16 +14,14 @@ void PolynomialPotential::setup(pt::ptree node) {
         coeffs.push_back(boost::lexical_cast<double>(coeff_vec[i]));
 }
 
-double PolynomialPotential::operator()(arma::mat const &x) {
+double PolynomialPotential::operator()(arma::mat const &x, unsigned index) {
     double pe = coeffs[0];
-    for (unsigned atom = 0; atom < x.n_rows; atom++) {
-        for (unsigned d = 0; d < x.n_cols; d++) {
-            double dist = x(atom, d);
-            double temp = dist;
-            for (unsigned i = 1; i < coeffs.size(); i++) {
-                pe += coeffs[i] * temp;
-                temp = temp * dist;
-            }
+    for (unsigned d = 0; d < x.n_cols; d++) {
+        double dist = x(index, d);
+        double temp = dist;
+        for (unsigned i = 1; i < coeffs.size(); i++) {
+            pe += coeffs[i] * temp;
+            temp = temp * dist;
         }
     }
     return pe;
