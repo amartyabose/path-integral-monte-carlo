@@ -20,7 +20,7 @@ double Potential::operator()(arma::mat const &x) {
     for (unsigned atom = 0; atom < x.n_rows; atom++)
         pe += (*this)(x, atom);
 
-    return pe;
+    return pe / 2;
 }
 
 arma::mat Potential::derivative(arma::mat const &x) {

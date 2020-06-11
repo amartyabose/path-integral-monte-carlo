@@ -15,6 +15,6 @@ void Translate::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom
         std::shared_ptr<Configuration> conf_new(conf->duplicate());
         conf_new->shift(atom_nums(atom), step);
 
-        check_amplitude(conf, conf_new);
+        check_amplitude(conf, conf_new, atom);
     }
 }

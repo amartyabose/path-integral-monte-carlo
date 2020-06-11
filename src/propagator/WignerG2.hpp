@@ -19,6 +19,7 @@ public:
     double get_tau(unsigned atom) override { return (2. * mass(atom) + tau * gamma) / gamma; }
     void   set_params(double Tau, pt::ptree::value_type p, arma::vec mass, double beta) override;
     double operator()(const arma::cube &conf) override;
+    double operator()(const arma::cube &conf, unsigned index) { return (*this)(conf); }
 };
 
 REGISTER_TYPE_GENERAL(WignerG2, Propagator)

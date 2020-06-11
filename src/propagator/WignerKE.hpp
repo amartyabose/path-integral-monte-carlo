@@ -18,6 +18,7 @@ public:
     }
     void   set_params(double Tau, pt::ptree::value_type p, arma::vec mass, double beta) override;
     double operator()(const arma::cube &momentum) override;
+    double operator()(const arma::cube &momentum, unsigned index) { return (*this)(momentum); }
 };
 
 REGISTER_TYPE_GENERAL(WignerKE, Propagator)

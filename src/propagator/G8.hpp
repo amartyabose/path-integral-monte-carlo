@@ -10,6 +10,7 @@ class G8 : public Propagator {
 public:
     G8() { num_total_beads = 7; }
     double     operator()(const arma::cube &conf) override;
+    double     operator()(const arma::cube &conf, unsigned index) override;
     arma::cube derivative(const arma::cube &conf) override;
 };
 

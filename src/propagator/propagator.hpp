@@ -29,7 +29,8 @@ public:
         tau = Tau / (num_total_beads - 1.);
     }
     virtual double     get_tau(unsigned atom) { return tau; }
-    virtual double     operator()(const arma::cube &conf) = 0;
+    virtual double     operator()(const arma::cube &conf)                 = 0;
+    virtual double     operator()(const arma::cube &conf, unsigned index) = 0;
     virtual arma::cube derivative(const arma::cube &conf) { return arma::zeros<arma::cube>(arma::size(conf)); }
     unsigned           total_beads() { return num_total_beads; }
 

@@ -38,6 +38,8 @@ public:
 
     virtual void operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) = 0;
     virtual void check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new);
+    virtual void check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new,
+                                 unsigned index);
 
     static void                  registerType(const std::string &name, MoveFactory *factory);
     static std::shared_ptr<Move> create(const std::string &name);

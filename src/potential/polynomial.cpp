@@ -24,7 +24,7 @@ double PolynomialPotential::operator()(arma::mat const &x, unsigned index) {
             temp = temp * dist;
         }
     }
-    return pe;
+    return 2 * pe;
 }
 
 std::complex<double> PolynomialPotential::operator()(arma::cx_mat const &x) {

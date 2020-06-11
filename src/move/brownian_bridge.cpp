@@ -58,7 +58,7 @@ void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
 
                 conf_new->augmented_set(atom, b, bc->wrap_vector(new_pos));
             }
-            check_amplitude(conf, conf_new);
+            check_amplitude(conf, conf_new, atom);
         }
     }
 }

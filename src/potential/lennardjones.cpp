@@ -19,7 +19,10 @@ void LennardJones::setup(pt::ptree node) {
 
 double LennardJones::operator()(arma::mat const &x, unsigned i) {
     double pe = 0;
-    for (unsigned j = 0; j < i; j++) {
+    for (unsigned j = 0; j < x.n_rows; j++) {
+        if (j == i)
+            continue;
+
         arma::rowvec disp = bc->wrap_vector(x.row(i) - x.row(j));
         double       dist = std::sqrt(arma::accu(disp % disp));
 
