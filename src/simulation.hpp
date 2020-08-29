@@ -34,6 +34,8 @@ class Simulation {
                                         // atoms only for Wigner calculations
     std::vector<double> dt_imaginary;
 
+    arma::vec open_chains;
+
     // for PIMD simulations
     arma::mat   bead_specific_mass;
     double      dt;

@@ -15,27 +15,26 @@ protected:
     unsigned natoms, ndims;
 
     std::vector<std::string> atom_names;
+    std::vector<unsigned>    bead_num;
 
+public:
     std::vector<char> type_of_polymers; // 'c' for closed; 'o' for open
     // if type_of_polymers is 'c' for a particular atom,
     // then the first and last beads would be identical
     // else the first and last beads can differ
-    std::vector<unsigned> bead_num;
 
-public:
     Configuration() = default;
     Configuration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums, arma::vec mass,
-                  arma::mat bead_specific_mass = arma::zeros<arma::mat>(0, 0));
+                  arma::vec open_chains = arma::zeros<arma::vec>(0));
     virtual void           load_config(std::string filename);
     virtual void           random_config();
     virtual Configuration *duplicate() { return new Configuration(*this); }
     void                   augmented_set(unsigned atom_num, unsigned time_ind, unsigned dim, double value);
     void                   augmented_set(unsigned atom_num, unsigned time_ind, arma::vec value);
     virtual void           shift(unsigned atom_num, arma::vec shift_amt);
-    virtual void           shift_time_bead(unsigned time_ind, arma::mat vals);
     unsigned               num_dims() const;
     unsigned               num_beads() const;
-    unsigned               num_augmented_beads() const;
+    unsigned               num_augmented_beads(unsigned atom_num) const;
     unsigned               num_atoms() const;
     double                 augmented_bead_position(unsigned atom_num, unsigned time_ind, unsigned dim) const;
     arma::vec              augmented_bead_position(unsigned atom_num, unsigned time_ind) const;

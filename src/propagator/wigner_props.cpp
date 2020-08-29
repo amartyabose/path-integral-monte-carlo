@@ -22,7 +22,7 @@ double WignerG2::operator()(const arma::cube &conf) {
         double    dist2 = arma::accu(disp % disp);
         var *= utilities::exp_series(dist2 * mass(atom) / (2. * get_tau(atom)), nx);
     }
-    return std::exp(total_amplitude) * var;
+    return total_amplitude + std::log(var);
 }
 
 void WignerKE::set_params(double Tau, pt::ptree::value_type p, arma::vec mass_, double beta_) {

@@ -22,15 +22,22 @@ void BrownianBridge::set_beta(arma::vec beta_) { beta = beta_; }
 
 void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) {
     for (unsigned atom_ind = 0; atom_ind < atom_nums.n_rows; atom_ind++) {
-        unsigned nbeads = conf->num_augmented_beads();
         unsigned atom   = atom_nums(atom_ind);
+        unsigned nbeads = conf->num_augmented_beads(atom);
+        if (conf->type_of_polymers[atom] == 'o')
+            nbeads += 1;
         for (unsigned attempt = 0; attempt < num_attempts; attempt++) {
             unsigned start = random_integer(0, nbeads - 1);
             unsigned end   = (start + num_beads_moved + 1) % nbeads;
+            if (conf->type_of_polymers[atom] == 'o') {
+                start = random_integer(0, nbeads - 2 - num_beads_moved);
+                end   = start + num_beads_moved + 1;
+            }
 
             std::shared_ptr<Configuration> conf_new(conf->duplicate());
             for (unsigned b = (start + 1) % nbeads, nmoved = 0; nmoved < num_beads_moved;
                  b = (b + 1) % nbeads, nmoved++) {
+                // std::cout << (b + nbeads - 1) % nbeads << '\t' << b << '\t' << end << '\t' << nbeads - 1 << '\n';
                 double tau0         = get_temp((b + nbeads - 1) % nbeads, atom);
                 double tau1         = get_temp(b, atom);
                 double taue         = get_temp(end, atom);
@@ -58,7 +65,44 @@ void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
 
                 conf_new->augmented_set(atom, b, bc->wrap_vector(new_pos));
             }
+            // std::cout << "Done with the basic thing" << std::endl;
             check_amplitude(conf, conf_new, atom);
+            // std::cout << '\n';
+
+            if (conf->type_of_polymers[atom] == 'o') {
+                std::shared_ptr<Configuration> conf_new_zero(conf->duplicate());
+
+                double tau0 = get_temp(0, atom);
+                double tau1 = get_temp(1, atom);
+                // spdlog::info("tau1 - tau0 = " + std::to_string(tau1 - tau0));
+                double tau      = (tau1 - tau0) * 2 * lambda(atom);
+                double sigma_bb = std::sqrt(tau);
+
+                arma::vec new_pos = arma::zeros<arma::vec>(conf->num_dims());
+                for (unsigned d = 0; d < conf->num_dims(); d++)
+                    new_pos(d) = random_normal(conf_new->augmented_bead_position(atom, 1, d), sigma_bb);
+
+                conf_new_zero->augmented_set(atom, 0, bc->wrap_vector(new_pos));
+                // std::cout << "Done zeroth bead" << std::endl;
+                check_amplitude(conf, conf_new_zero, atom);
+
+                std::shared_ptr<Configuration> conf_new_last(conf->duplicate());
+
+                tau0 = get_temp(nbeads - 2, atom);
+                tau1 = get_temp(nbeads - 1, atom);
+                // spdlog::info("tau1 = " + std::to_string(tau1) + "; tau0 = " + std::to_string(tau0));
+                // spdlog::info("Last tau1 - tau0 = " + std::to_string(tau1 - tau0));
+                tau      = (tau1 - tau0) * 2 * lambda(atom);
+                sigma_bb = std::sqrt(tau);
+
+                new_pos = arma::zeros<arma::vec>(conf->num_dims());
+                for (unsigned d = 0; d < conf->num_dims(); d++)
+                    new_pos(d) = random_normal(conf_new->augmented_bead_position(atom, nbeads - 2, d), sigma_bb);
+
+                conf_new_last->augmented_set(atom, nbeads - 1, bc->wrap_vector(new_pos));
+                // std::cout << "Done final bead" << std::endl;
+                check_amplitude(conf, conf_new_last, atom);
+            }
         }
     }
 }

@@ -29,6 +29,7 @@ void Units::setup(pt::ptree node) {
         length_default      = 5.291772109e-11;
         time_default        = 2.41888432658e-17;
         temperature_default = 3.1577464e5;
+        energy_default      = 4.359744722207e-18;
     } else if (unit_type == "real") {
         mass_default        = 1e-3 / 6.02214e23;
         length_default      = 1e-10;

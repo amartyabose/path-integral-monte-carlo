@@ -13,7 +13,7 @@ double Morse::operator()(arma::mat const &x, unsigned index) {
     double    dist     = arma::norm(disp);
     double    exp_dist = (1. - std::exp(-alpha * (dist - rmin)));
     double    pe       = D * exp_dist * exp_dist;
-    return 2 * pe;
+    return pe;
 }
 
 std::complex<double> Morse::operator()(arma::cx_mat const &x) {

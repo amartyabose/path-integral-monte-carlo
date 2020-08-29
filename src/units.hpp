@@ -40,7 +40,8 @@ struct Units {
         else
             val = std::pow(scaling.at(Mass), dimension.dim.at("mass")) *
                   std::pow(scaling.at(Length), dimension.dim.at("length")) *
-                  std::pow(scaling.at(Time), dimension.dim.at("time"));
+                  std::pow(scaling.at(Time), dimension.dim.at("time")) *
+                  std::pow(scaling.at(Temperature), dimension.dim.at("temperature"));
 
         return val;
     }

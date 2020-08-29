@@ -2,7 +2,7 @@
 
 void Move::check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new) {
     moves_tried++;
-    double new_weight = 1, old_weight = 1;
+    double new_weight = 0, old_weight = 0;
     for (unsigned p = 0; p < propagator.size(); p++) {
         double new_frag_weight = (*propagator[p])(conf_new->get_augmented_segment(p, p + 1));
         if (new_frag_weight != new_frag_weight)
@@ -19,7 +19,7 @@ void Move::check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared
 void Move::check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new,
                            unsigned index) {
     moves_tried++;
-    double new_weight = 1, old_weight = 1;
+    double new_weight = 0, old_weight = 0;
     for (unsigned p = 0; p < propagator.size(); p++) {
         double new_frag_weight = (*propagator[p])(conf_new->get_augmented_segment(p, p + 1), index);
         if (new_frag_weight != new_frag_weight)

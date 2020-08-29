@@ -8,8 +8,8 @@
 #include "pi_wigner_config.hpp"
 
 WignerConfiguration::WignerConfiguration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums,
-                                         arma::vec mass, arma::mat bead_specific_mass)
-    : Configuration(natoms, ndimensions, bead_nums, mass, bead_specific_mass) {
+                                         arma::vec mass)
+    : Configuration(natoms, ndimensions, bead_nums, mass) {
     momentum   = arma::zeros<arma::mat>(natoms, ndimensions);
     wigner_pos = arma::zeros<arma::mat>(natoms, ndimensions);
 }

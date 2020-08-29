@@ -183,6 +183,13 @@ void Simulation::get_parameters(pt::ptree params) {
         }
     }
 
+    auto open_chain_atoms = params.get_optional<std::string>("open_chains");
+    if (open_chain_atoms) {
+        std::string open_chain_vec = open_chain_atoms.get();
+        spdlog::info("\tOpen chains on atoms: " + open_chain_vec);
+        open_chains = arma::vec(open_chain_vec);
+    }
+
     initial_config = params.get<std::string>("initial_configuration", "");
     spdlog::info("\tBasic system parameters setup done.");
 }
@@ -309,7 +316,7 @@ void Simulation::load(pt::ptree tree) {
 void Simulation::run() {
     std::shared_ptr<Configuration> conf;
     if (type == "pimc")
-        conf.reset(new Configuration(natoms, ndimensions, bead_nums, mass));
+        conf.reset(new Configuration(natoms, ndimensions, bead_nums, mass, open_chains));
     else if (type == "wigner")
         conf.reset(new WignerConfiguration(natoms, ndimensions, bead_nums, mass));
 
@@ -356,5 +363,6 @@ void Simulation::run_block(std::shared_ptr<Configuration> &conf) {
             for (auto const &m : moves)
                 (*m)(conf, atoms);
         output.add_config(conf);
+        // conf->necklace(0).print("atom 0");
     }
 }

@@ -9,8 +9,7 @@ protected:
 
 public:
     WignerConfiguration() = default;
-    WignerConfiguration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums, arma::vec mass,
-                        arma::mat bead_specific_mass = arma::zeros<arma::mat>(0, 0));
+    WignerConfiguration(unsigned natoms, unsigned ndimensions, std::vector<unsigned> bead_nums, arma::vec mass);
     void           load_config(std::string filename) override;
     Configuration *duplicate() override { return new WignerConfiguration(*this); }
     void           shift(unsigned atom_num, arma::vec shift_amt) override;
