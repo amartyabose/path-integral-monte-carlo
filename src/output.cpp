@@ -83,7 +83,11 @@ void Output::add_config(std::shared_ptr<Configuration> const &conf) {
         if (histogram[i]) {
             std::ofstream ofs(output_folder + "/histograms/" + estimator_names[i] + ".node." + std::to_string(my_id),
                               std::ios::app);
-            ofs << conf->weight().real() << '\t' << val.as_row();
+            ofs << conf->weight().real();
+            for (unsigned i=0; i<val.n_rows; i++) 
+                for (unsigned j=0; j<val.n_cols; j++)
+                    ofs << '\t' << val(i, j);
+            ofs << std::endl;
         }
     }
 
