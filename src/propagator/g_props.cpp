@@ -96,8 +96,8 @@ double G8::operator()(const arma::cube &conf) {
     double total_amplitude =
         std::log(54. / 35) - tau * (V1 / 2. + V2 + V3 + V4 + V5 + V6 + V1 / 2.) +
         std::log(1. - 7. / 16 * std::exp(-tau * (V1 / 2. - V2 + V3 - V4 + V5 - V6 + V7 / 2.)) +
-                 7. / 81 * std::exp(-tau * (V1 - V2 - V3 + 2 * V4 - V5 - V6 + V7)) +
-                 1. / (24 * 54) * std::exp(-tau * (5. / 2 * V1 - V2 - V3 - V4 - V5 - V6 + 5. / 2 * V2)));
+                 7. / 81 * std::exp(-tau * (V1 - V2 - V3 + 2 * V4 - V5 - V6 + V7)) -
+                 1. / (24 * 54) * std::exp(-tau * (5. / 2 * V1 - V2 - V3 - V4 - V5 - V6 + 5. / 2 * V7)));
     return total_amplitude;
 }
 
@@ -113,8 +113,8 @@ double G8::operator()(const arma::cube &conf, unsigned index) {
     double total_amplitude =
         std::log(54. / 35) - tau * (V1 / 2. + V2 + V3 + V4 + V5 + V6 + V1 / 2.) +
         std::log(1. - 7. / 16 * std::exp(-tau * (V1 / 2. - V2 + V3 - V4 + V5 - V6 + V7 / 2.)) +
-                 7. / 81 * std::exp(-tau * (V1 - V2 - V3 + 2 * V4 - V5 - V6 + V7)) +
-                 1. / (24 * 54) * std::exp(-tau * (5. / 2 * V1 - V2 - V3 - V4 - V5 - V6 + 5. / 2 * V2)));
+                 7. / 81 * std::exp(-tau * (V1 - V2 - V3 + 2 * V4 - V5 - V6 + V7)) -
+                 1. / (24 * 54) * std::exp(-tau * (5. / 2 * V1 - V2 - V3 - V4 - V5 - V6 + 5. / 2 * V7)));
     return total_amplitude;
 }
 
