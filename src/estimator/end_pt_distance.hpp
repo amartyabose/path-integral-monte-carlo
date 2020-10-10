@@ -10,7 +10,9 @@ public:
     unsigned    atom_num;
 
     void setup(std::string type_, arma::vec mass_, double beta_, unsigned num_beads_, pt::ptree node) override {
-        type     = type_;
+        type = type_;
+        if (type == "wigner")
+            throw std::runtime_error("End2EndDist not defined for Wigner calculations.");
         n_rows   = 1;
         n_cols   = node.get<unsigned>("<xmlattr>.dims", 3);
         atom_num = node.get<unsigned>("<xmlattr>.atom_num");

@@ -37,13 +37,13 @@ double Sk::calc_sk(arma::mat const &pos, arma::vec const &k) {
 
 double Sk::calc_sk(std::shared_ptr<Configuration> const &x, arma::vec const &ks) {
     double val = 0.0;
-    if (type == "pimc" || type == "pimd") {
+    if (type == "wigner")
+        val = calc_sk(x->pos(), ks);
+    else {
         for (unsigned i = 0; i < x->num_beads(); ++i)
             val += calc_sk(x->time_slice(i), ks);
         val /= x->num_beads();
-    } else if (type == "pimc" || type == "pimd")
-        val = calc_sk(x->pos(), ks);
-
+    }
     return val;
 }
 

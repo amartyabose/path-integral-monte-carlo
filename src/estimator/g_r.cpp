@@ -31,7 +31,19 @@ arma::mat Gr::eval(std::shared_ptr<Configuration> const &x) {
 
     arma::mat ans = arma::zeros<arma::mat>(n_rows, n_cols);
     ans.col(0)    = Rs;
-    if (type == "pimc" || type == "pimd") {
+    if (type == "wigner") {
+        arma::mat pos = x->pos();
+        for (unsigned a1 = 0; a1 < x->num_atoms(); a1++)
+            for (unsigned a2 = 0; a2 < a1; a2++) {
+                auto   disp  = bc->wrap_vector(pos.row(a1) - pos.row(a2));
+                double dist  = arma::norm(disp);
+                int    index = std::round(dist / bin_size);
+                if (index < n_rows)
+                    ans(index, 1) += 2; // one for a1-a2 interaction and one for a2-a1 interaction.
+            }
+        ans.col(1) /= x->num_atoms() * normalization; // The answer needs to be divided by the number density (N/V).
+        ans(0, 1) = 0;
+    } else {
         for (unsigned b = 0; b < x->num_beads(); b++) {
             auto time_slice = x->time_slice(b);
             for (unsigned a1 = 0; a1 < x->num_atoms(); a1++)
@@ -45,18 +57,6 @@ arma::mat Gr::eval(std::shared_ptr<Configuration> const &x) {
         }
         ans.col(1) /= x->num_beads() * x->num_atoms() *
                       normalization; // The answer needs to be divided by the number density (N/V).
-        ans(0, 1) = 0;
-    } else {
-        arma::mat pos = x->pos();
-        for (unsigned a1 = 0; a1 < x->num_atoms(); a1++)
-            for (unsigned a2 = 0; a2 < a1; a2++) {
-                auto   disp  = bc->wrap_vector(pos.row(a1) - pos.row(a2));
-                double dist  = arma::norm(disp);
-                int    index = std::round(dist / bin_size);
-                if (index < n_rows)
-                    ans(index, 1) += 2; // one for a1-a2 interaction and one for a2-a1 interaction.
-            }
-        ans.col(1) /= x->num_atoms() * normalization; // The answer needs to be divided by the number density (N/V).
         ans(0, 1) = 0;
     }
     return ans;

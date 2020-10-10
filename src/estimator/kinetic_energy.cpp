@@ -3,7 +3,10 @@
 
 arma::mat KineticEnergy::eval(std::shared_ptr<Configuration> const &x) {
     double ans = 0;
-    if (type == "pimc" || type == "pimd") {
+    if (type == "wigner") {
+        WignerConfiguration *conf = dynamic_cast<WignerConfiguration *>(x.get());
+        ans                       = arma::accu(conf->get_momentum() % conf->get_momentum() / conf->get_mass()) / 2;
+    } else {
         double val = 0;
         double tau = beta / x->num_beads();
         for (unsigned atom = 0; atom < x->num_atoms(); atom++)
@@ -12,10 +15,6 @@ arma::mat KineticEnergy::eval(std::shared_ptr<Configuration> const &x) {
                 val += mass(atom) * arma::dot(temp, temp);
             }
         ans = (x->num_dims() * x->num_atoms() / (2. * tau) - val / (2 * x->num_beads() * tau * tau));
-    } else {
-        WignerConfiguration *conf = dynamic_cast<WignerConfiguration *>(x.get());
-
-        ans = arma::accu(conf->get_momentum() % conf->get_momentum() / conf->get_mass()) / 2;
     }
     return ans * units.energy_to_non_base_units * arma::ones<arma::mat>(n_rows, n_cols);
 }

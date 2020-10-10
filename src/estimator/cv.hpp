@@ -10,7 +10,10 @@ public:
     double      beta;
 
     void setup(std::string type_, arma::vec mass_, double beta_, unsigned num_beads_, pt::ptree node) override {
-        type   = type_;
+        type = type_;
+        if (type == "wigner")
+            throw std::runtime_error("CV not yet defined for Wigner calculations");
+
         beta   = beta_;
         n_cols = 1;
         n_rows = 2;
