@@ -11,10 +11,8 @@ void Simulation::initialize_output(pt::ptree output_node) {
     output.each_block      = utilities::boolparse(output_node.get<std::string>("<xmlattr>.each_block", "NO"));
     output.out_progressive = utilities::boolparse(output_node.get<std::string>("<xmlattr>.progressive", "NO"));
     output.out_phasespace  = utilities::boolparse(output_node.get<std::string>("phasespace", "NO"));
-    output.phasespace_histogram =
-        utilities::boolparse(output_node.get<std::string>("phasespace.<xmlattr>.histogram", "NO"));
-    output.output_folder = output_node.get<std::string>("output_folder", "output");
-    output.type          = type;
+    output.output_folder   = output_node.get<std::string>("output_folder", "output");
+    output.type            = type;
 }
 
 void Simulation::setup_output(pt::ptree output_node) {
@@ -85,7 +83,7 @@ void Simulation::setup_output(pt::ptree output_node) {
             output.weight_im_minus[b] = 0;
         }
     }
-    output.setup(my_id, world_size, nblocks);
+    output.setup(my_id, world_size, nblocks, bead_nums.size() - 1);
     spdlog::info("Estimators and output setup done.");
 }
 
@@ -141,8 +139,6 @@ void Simulation::get_parameters(pt::ptree params) {
     ndimensions = params.get<unsigned>("num_dimensions");
     natoms      = params.get<unsigned>("num_atoms");
     nprops      = params.get<unsigned>("num_propagators");
-    if (natoms > 1 && output.phasespace_histogram)
-        throw std::runtime_error("Phasespace histograms are only meaningful for 1 atom systems.");
 
     auto beta_ = params.get_optional<double>("beta");
     auto T_    = params.get_optional<double>("temperature");
@@ -363,6 +359,5 @@ void Simulation::run_block(std::shared_ptr<Configuration> &conf) {
             for (auto const &m : moves)
                 (*m)(conf, atoms);
         output.add_config(conf);
-        // conf->necklace(0).print("atom 0");
     }
 }

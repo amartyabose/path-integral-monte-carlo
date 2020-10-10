@@ -36,13 +36,13 @@ void WignerConfiguration::shift(unsigned atom_num, arma::vec shift_amt) {
 
 std::complex<double> WignerConfiguration::weight() const {
     std::complex<double> I(0, 1);
-    return std::exp(-I * arma::accu(momentum % (time_slice(0) - time_slice(num_beads() - 2))));
+    return std::exp(-I * arma::accu(momentum % (time_slice(0) - time_slice(num_beads() - 1))));
 }
 
-std::string WignerConfiguration::repr(int frame_cnt) const {
+std::string WignerConfiguration::repr(int frame_cnt, int slice_num) const {
     std::string output = std::to_string(num_atoms()) + "\n" + std::to_string(frame_cnt) + "\n";
     for (unsigned r = 0; r < wigner_pos.n_rows; r++) {
-        output += "AT\t";
+        output += atom_names[r] + "\t";
         for (unsigned c = 0; c < wigner_pos.n_cols; c++)
             output += (boost::format("%.5e\t") % wigner_pos(r, c)).str();
         for (int k = 0; k < 3 - wigner_pos.n_cols; k++)

@@ -6,13 +6,11 @@ arma::mat KineticEnergy::eval(std::shared_ptr<Configuration> const &x) {
     if (type == "pimc" || type == "pimd") {
         double val = 0;
         double tau = beta / x->num_beads();
-        for (unsigned i = 0; i < x->num_beads(); i++)
-            for (unsigned atom = 0; atom < x->num_atoms(); atom++) {
+        for (unsigned atom = 0; atom < x->num_atoms(); atom++)
+            for (unsigned i = 0; i < x->num_beads(); i++) {
                 arma::vec temp = x->bead_position(atom, i) - x->bead_position(atom, (i + 1) % x->num_beads());
                 val += mass(atom) * arma::dot(temp, temp);
             }
-        // val += arma::accu((x->time_slice(i) - x->time_slice((i + 1) % x->num_beads())) %
-        //                   (x->time_slice(i) - x->time_slice((i + 1) % x->num_beads())));
         ans = (x->num_dims() * x->num_atoms() / (2. * tau) - val / (2 * x->num_beads() * tau * tau));
     } else {
         WignerConfiguration *conf = dynamic_cast<WignerConfiguration *>(x.get());

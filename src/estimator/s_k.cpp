@@ -9,10 +9,10 @@ std::complex<double> I(0, 1);
 
 void Sk::setup(std::string type_, arma::vec mass_, double beta_, unsigned num_beads_, pt::ptree node) {
     type        = type_;
-    kmax        = node.get<double>("<xmlattr>.kmax");
     double Rmax = node.get<double>("<xmlattr>.rmax");
-    delta_k     = node.get<double>("<xmlattr>.dk");
-    ks_1d       = arma::regspace(2 * arma::datum::pi / Rmax, delta_k, kmax);
+    kmax        = node.get<double>("<xmlattr>.kmax");
+    delta_k     = 2 * arma::datum::pi / Rmax;
+    ks_1d       = arma::regspace(delta_k, delta_k, kmax);
     n_cols      = 2;
     n_rows      = ks_1d.n_rows;
 
@@ -78,7 +78,7 @@ arma::mat Sk::eval(std::shared_ptr<Configuration> const &x) {
                         arma::vec k = arma::zeros<arma::vec>(3);
                         k(0)        = kx;
                         k(1)        = ky;
-                        k(1)        = kx;
+                        k(2)        = kz;
                         ans(len - 1, 1) += calc_sk(x, k * delta_k);
                     }
                 }

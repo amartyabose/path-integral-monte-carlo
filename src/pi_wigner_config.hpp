@@ -17,7 +17,7 @@ public:
     void           set_position(unsigned atom_num, unsigned dim, double value);
     void           set_momentum(unsigned atom_num, unsigned dim, double value);
     arma::mat      pos() const override;
-    std::string    repr(int frame_cnt) const override;
+    std::string    repr(int frame_cnt, int slice_num) const override;
 
     std::complex<double> weight() const override;
 };

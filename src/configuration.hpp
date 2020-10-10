@@ -33,8 +33,8 @@ public:
     void                   augmented_set(unsigned atom_num, unsigned time_ind, arma::vec value);
     virtual void           shift(unsigned atom_num, arma::vec shift_amt);
     unsigned               num_dims() const;
-    unsigned               num_beads() const;
-    unsigned               num_augmented_beads(unsigned atom_num) const;
+    unsigned               num_beads(int atom_num = -1) const;
+    unsigned               num_augmented_beads(int atom_num = -1) const;
     unsigned               num_atoms() const;
     double                 augmented_bead_position(unsigned atom_num, unsigned time_ind, unsigned dim) const;
     arma::vec              augmented_bead_position(unsigned atom_num, unsigned time_ind) const;
@@ -47,7 +47,7 @@ public:
     virtual arma::vec      get_mass() const { return mass; }
     virtual arma::mat      pos() const;
     virtual arma::mat      get_momentum() const;
-    virtual std::string    repr(int frame_cnt) const;
+    virtual std::string    repr(int frame_cnt, int slice_num) const;
 
     virtual std::complex<double> weight() const { return 1.; }
 };

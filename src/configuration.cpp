@@ -88,9 +88,19 @@ void Configuration::shift(unsigned atom_num, arma::vec shift_amt) {
 
 unsigned Configuration::num_dims() const { return ndims; }
 
-unsigned Configuration::num_beads() const { return bead_num.size(); }
+unsigned Configuration::num_beads(int atom_num) const {
+    if (atom_num < 0 || type_of_polymers[atom_num] == 'c')
+        return bead_num.size() - 1;
+    else
+        return bead_num.size();
+}
 
-unsigned Configuration::num_augmented_beads(unsigned atom_num) const { return positions.n_cols - 1; }
+unsigned Configuration::num_augmented_beads(int atom_num) const {
+    if (atom_num < 0 || type_of_polymers[atom_num] == 'c')
+        return positions.n_cols - 1;
+    else
+        return positions.n_cols;
+}
 
 unsigned Configuration::num_atoms() const { return natoms; }
 
@@ -124,28 +134,28 @@ arma::cube Configuration::get_augmented_segment(unsigned t1, unsigned t2) const 
 
 arma::mat Configuration::CoM() const {
     arma::mat ans = arma::zeros<arma::mat>(num_atoms(), num_dims());
-    for (unsigned b = 0; b < num_beads() - 1; b++)
-        ans += time_slice(b);
-
-    return ans / (num_beads() - 1);
+    for (unsigned a = 0; a < num_atoms(); a++) {
+        for (unsigned b = 0; b < num_beads(a); b++)
+            ans.row(a) += time_slice(b);
+        ans.row(a) /= ans / num_beads(a);
+    }
+    return ans;
 }
 
 arma::mat Configuration::pos() const { return time_slice(0); }
 
 arma::mat Configuration::get_momentum() const { return arma::zeros<arma::mat>(1, num_dims()); }
 
-std::string Configuration::repr(int frame_cnt) const {
-    std::string output = std::to_string(num_atoms() * (num_beads() - 1)) + "\n" + std::to_string(frame_cnt) + "\n";
-    for (unsigned slices = 0; slices < num_beads() - 1; slices++) {
-        arma::mat slice = time_slice(slices);
-        for (unsigned r = 0; r < slice.n_rows; r++) {
-            output += atom_names[r] + '\t';
-            for (unsigned c = 0; c < slice.n_cols; c++)
-                output += (boost::format("%.5e\t") % slice(r, c)).str();
-            for (int k = 0; k < 3 - slice.n_cols; k++)
-                output += (boost::format("%.5e\t") % 0).str();
-            output += "slice" + std::to_string(slices + 1) + '\n';
-        }
+std::string Configuration::repr(int frame_cnt, int slice_num) const {
+    std::string output = std::to_string(num_atoms()) + "\n" + std::to_string(frame_cnt) + "\n";
+    arma::mat   slice  = time_slice(slice_num);
+    for (unsigned r = 0; r < slice.n_rows; r++) {
+        output += atom_names[r] + "\t";
+        for (unsigned c = 0; c < slice.n_cols; c++)
+            output += (boost::format("%.5e\t") % slice(r, c)).str();
+        for (int k = 0; k < 3 - slice.n_cols; k++)
+            output += (boost::format("%.5e\t") % 0).str();
+        output += '\n';
     }
     return output;
 }

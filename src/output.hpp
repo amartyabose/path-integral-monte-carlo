@@ -12,7 +12,7 @@ struct Output {
     std::string output_folder;
 
     bool each_node, each_block;
-    bool out_phasespace, phasespace_histogram;
+    bool out_phasespace;
     bool out_progressive;
 
     std::string type;
@@ -33,7 +33,7 @@ struct Output {
 
     std::vector<double> weight_re_plus, weight_re_minus, weight_im_plus, weight_im_minus;
 
-    void setup(int rank, int world_size, int nblocks);
+    void setup(int rank, int world_size, int nblocks, int num_beads);
     void add_config(std::shared_ptr<Configuration> const &conf);
     void finalize_block();
     void finalize_output();
@@ -41,10 +41,12 @@ struct Output {
 private:
     int           block_num;
     std::string   node_dir, progressive_dir;
-    std::ofstream phase_space_stream;
     std::ofstream node_spec_est_stream;
     std::ofstream est_stream;
     std::ofstream progressive_stream;
+
+    std::vector<std::ofstream> phase_space_stream;
+    std::vector<std::ofstream> histogram_stream;
 
     void write(std::ostream &os, arma::cx_mat const &val);
     void write(std::ostream &os, arma::cx_mat const &val, arma::mat const &err_re, arma::mat const &err_im);

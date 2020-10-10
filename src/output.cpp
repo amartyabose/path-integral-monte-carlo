@@ -7,7 +7,7 @@
 
 #include "output.hpp"
 
-void Output::setup(int rank, int size, int nblocks) {
+void Output::setup(int rank, int size, int nblocks, int num_beads) {
     my_id            = rank;
     world_size       = size;
     block_num        = 0;
@@ -18,14 +18,6 @@ void Output::setup(int rank, int size, int nblocks) {
             spdlog::warn("Directory " + output_folder + " exists. Files may be rewritten.");
         else
             boost::filesystem::create_directory("./" + output_folder);
-
-        bool any_hist = false;
-        for (auto const &h : histogram)
-            if (!any_hist && h)
-                boost::filesystem::create_directory(output_folder + "/histograms");
-
-        if (out_phasespace)
-            boost::filesystem::create_directory(output_folder + "/phasespace");
 
         if (out_progressive) {
             progressive_dir = output_folder + "/progressive";
@@ -38,23 +30,34 @@ void Output::setup(int rank, int size, int nblocks) {
         boost::filesystem::create_directory(node_dir);
     }
 
-    if (out_phasespace)
-        phase_space_stream.open(output_folder + "/phasespace/nd." + std::to_string(my_id) + ".configs.xyz");
+    bool any_hist = false;
+    for (auto i = 0; i < histogram.size(); i++)
+        if (histogram[i]) {
+            if (!any_hist)
+                boost::filesystem::create_directory(output_folder + "/histograms");
+
+            std::ofstream ofs(output_folder + "/histograms/" + estimator_names[i] + ".node." + std::to_string(my_id));
+            histogram_stream.push_back(std::move(ofs));
+        }
+
+    if (out_phasespace) {
+        boost::filesystem::create_directory(output_folder + "/phasespace");
+        boost::filesystem::create_directory(output_folder + "/phasespace/node-" + std::to_string(my_id));
+        std::ofstream out;
+        for (unsigned i = 0; i < num_beads; i++) {
+            spdlog::info("Creating the phasespace file for bead number " + std::to_string(i));
+            out.open(output_folder + "/phasespace/node-" + std::to_string(my_id) + "/bead" + std::to_string(i) +
+                     ".configs.xyz");
+            phase_space_stream.push_back(std::move(out));
+        }
+    }
 }
 
 void Output::add_config(std::shared_ptr<Configuration> const &conf) {
     static int frame_cnt = 0;
-    if (out_phasespace && !phasespace_histogram)
-        phase_space_stream << conf->repr(frame_cnt);
-    else if (out_phasespace && phasespace_histogram) {
-        phase_space_stream << conf->weight().real() << '\t' << conf->weight().imag() << '\t';
-        arma::mat pos = conf->pos();
-        arma::mat mom = conf->get_momentum();
-        for (unsigned atom = 0; atom < conf->num_atoms(); atom++)
-            for (unsigned d = 0; d < conf->num_dims(); d++)
-                phase_space_stream << pos(atom, d) << '\t' << mom(atom, d) << '\t';
-        phase_space_stream << std::endl;
-    }
+    if (out_phasespace)
+        for (auto i = 0; i < phase_space_stream.size(); i++)
+            phase_space_stream[i] << conf->repr(frame_cnt, i);
 
     std::complex<double> weight = conf->weight();
     if (weight.real() >= 0)
@@ -81,13 +84,11 @@ void Output::add_config(std::shared_ptr<Configuration> const &conf) {
             est_im_vals_minus[i][block_num] += weight.imag() * val;
 
         if (histogram[i]) {
-            std::ofstream ofs(output_folder + "/histograms/" + estimator_names[i] + ".node." + std::to_string(my_id),
-                              std::ios::app);
-            ofs << conf->weight().real();
-            for (unsigned i=0; i<val.n_rows; i++) 
-                for (unsigned j=0; j<val.n_cols; j++)
-                    ofs << '\t' << val(i, j);
-            ofs << std::endl;
+            histogram_stream[i] << frame_cnt << '\t' << conf->weight().real();
+            for (unsigned r = 0; r < val.n_rows; r++)
+                for (unsigned c = 0; c < val.n_cols; c++)
+                    histogram_stream[i] << '\t' << val(r, c);
+            histogram_stream[i] << std::endl;
         }
     }
 
