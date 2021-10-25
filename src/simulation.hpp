@@ -28,6 +28,10 @@ class Simulation {
 
     std::string type, initial_config;
 
+    bool     grand_canonical;
+    double   chemical_potential;
+    unsigned max_worms;
+
     unsigned  ndimensions, natoms, nprops;
     double    beta;
     arma::vec mass, atom_specific_beta; // atom_specific_beta is different for
@@ -62,6 +66,7 @@ class Simulation {
     void get_dts(pt::ptree prop);
     void get_moves(pt::ptree move_params);
     void run_block(std::shared_ptr<Configuration> &conf);
+    void get_worm_data(boost::optional<pt::ptree &> worm_node);
 
     virtual void get_parameters(pt::ptree params);
     virtual void get_MC_params(pt::ptree params);

@@ -1,7 +1,7 @@
 #include "brownian_bridge.hpp"
 #include "../units.hpp"
 
-double BrownianBridge::get_temp(unsigned bead_num, unsigned atom) {
+double BrownianBridge::get_temp(unsigned bead_num, unsigned atom) const {
     double   temp          = 0;
     unsigned beads_counted = 0;
     for (unsigned p = 0; beads_counted < bead_num && p < propagator.size(); p++)
@@ -20,7 +20,7 @@ void BrownianBridge::setup(pt::ptree::value_type node, double beta_, arma::vec m
 
 void BrownianBridge::set_beta(arma::vec beta_) { beta = beta_; }
 
-void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) {
+void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) const {
     for (unsigned atom_ind = 0; atom_ind < atom_nums.n_rows; atom_ind++) {
         unsigned atom   = atom_nums(atom_ind);
         unsigned nbeads = conf->num_augmented_beads(atom);
@@ -37,7 +37,6 @@ void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
             std::shared_ptr<Configuration> conf_new(conf->duplicate());
             for (unsigned b = (start + 1) % nbeads, nmoved = 0; nmoved < num_beads_moved;
                  b = (b + 1) % nbeads, nmoved++) {
-                // std::cout << (b + nbeads - 1) % nbeads << '\t' << b << '\t' << end << '\t' << nbeads - 1 << '\n';
                 double tau0         = get_temp((b + nbeads - 1) % nbeads, atom);
                 double tau1         = get_temp(b, atom);
                 double taue         = get_temp(end, atom);
@@ -49,7 +48,6 @@ void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
                     start_to_new = tau1 + (beta(atom) - tau0);
                 start_to_new *= 2. * lambda(atom);
                 new_to_end *= 2. * lambda(atom);
-
                 double start_to_end = start_to_new + new_to_end;
                 auto   sigma_bb     = std::sqrt(start_to_new * new_to_end / start_to_end);
 
@@ -65,16 +63,13 @@ void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
 
                 conf_new->augmented_set(atom, b, bc->wrap_vector(new_pos));
             }
-            // std::cout << "Done with the basic thing" << std::endl;
             check_amplitude(conf, conf_new, atom);
-            // std::cout << '\n';
 
             if (conf->type_of_polymers[atom] == 'o') {
                 std::shared_ptr<Configuration> conf_new_zero(conf->duplicate());
 
-                double tau0 = get_temp(0, atom);
-                double tau1 = get_temp(1, atom);
-                // spdlog::info("tau1 - tau0 = " + std::to_string(tau1 - tau0));
+                double tau0     = get_temp(0, atom);
+                double tau1     = get_temp(1, atom);
                 double tau      = (tau1 - tau0) * 2 * lambda(atom);
                 double sigma_bb = std::sqrt(tau);
 
@@ -83,15 +78,12 @@ void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
                     new_pos(d) = random_normal(conf_new->augmented_bead_position(atom, 1, d), sigma_bb);
 
                 conf_new_zero->augmented_set(atom, 0, bc->wrap_vector(new_pos));
-                // std::cout << "Done zeroth bead" << std::endl;
                 check_amplitude(conf, conf_new_zero, atom);
 
                 std::shared_ptr<Configuration> conf_new_last(conf->duplicate());
 
-                tau0 = get_temp(nbeads - 2, atom);
-                tau1 = get_temp(nbeads - 1, atom);
-                // spdlog::info("tau1 = " + std::to_string(tau1) + "; tau0 = " + std::to_string(tau0));
-                // spdlog::info("Last tau1 - tau0 = " + std::to_string(tau1 - tau0));
+                tau0     = get_temp(nbeads - 2, atom);
+                tau1     = get_temp(nbeads - 1, atom);
                 tau      = (tau1 - tau0) * 2 * lambda(atom);
                 sigma_bb = std::sqrt(tau);
 
@@ -100,7 +92,6 @@ void BrownianBridge::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
                     new_pos(d) = random_normal(conf_new->augmented_bead_position(atom, nbeads - 2, d), sigma_bb);
 
                 conf_new_last->augmented_set(atom, nbeads - 1, bc->wrap_vector(new_pos));
-                // std::cout << "Done final bead" << std::endl;
                 check_amplitude(conf, conf_new_last, atom);
             }
         }

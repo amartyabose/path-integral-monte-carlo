@@ -6,7 +6,7 @@ void WignerPosition::setup(pt::ptree::value_type node, double beta_, arma::vec m
     sigma      = arma::sqrt(delta_beta / (4. * mass));
 }
 
-void WignerPosition::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) {
+void WignerPosition::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) const {
     arma::mat            xmean       = (conf->time_slice(0) + conf->time_slice(conf->num_beads(0) - 1)) / 2.;
     unsigned             dimensions  = conf->num_dims();
     WignerConfiguration *wigner_conf = dynamic_cast<WignerConfiguration *>(conf.get());

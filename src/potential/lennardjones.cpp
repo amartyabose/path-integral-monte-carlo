@@ -17,7 +17,7 @@ void LennardJones::setup(pt::ptree node) {
         rmin = sigma_.get() * 1.12246204831; // the silly value is 2^(1/6)
 }
 
-double LennardJones::operator()(arma::mat const &x, unsigned i) {
+double LennardJones::operator()(arma::mat const &x, unsigned i) const {
     double pe = 0;
     for (unsigned j = 0; j < x.n_rows; j++) {
         if (j == i)
@@ -39,7 +39,7 @@ double LennardJones::operator()(arma::mat const &x, unsigned i) {
     return pe;
 }
 
-arma::mat LennardJones::derivative(arma::mat const &x) {
+arma::mat LennardJones::derivative(arma::mat const &x) const {
     arma::mat grad = arma::zeros<arma::mat>(arma::size(x));
     for (unsigned i = 0; i < x.n_rows; i++)
         for (unsigned j = 0; j < i; j++) {

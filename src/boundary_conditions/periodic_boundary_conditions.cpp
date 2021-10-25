@@ -2,7 +2,7 @@
 
 void PeriodicBoundaryConditions::setup(pt::ptree node) { box_size = arma::vec(node.get<std::string>("box_size")); }
 
-arma::rowvec PeriodicBoundaryConditions::wrap_rowvector(arma::rowvec const &x) {
+arma::rowvec PeriodicBoundaryConditions::wrap_rowvector(arma::rowvec const &x) const {
     arma::rowvec new_x = x;
     for (unsigned d = 0; d < x.n_elem; d++)
         if (new_x(d) > box_size(d) / 2)
@@ -12,7 +12,7 @@ arma::rowvec PeriodicBoundaryConditions::wrap_rowvector(arma::rowvec const &x) {
     return new_x;
 }
 
-arma::vec PeriodicBoundaryConditions::wrap_vector(arma::vec const &x) {
+arma::vec PeriodicBoundaryConditions::wrap_vector(arma::vec const &x) const {
     arma::vec new_x = x;
     for (unsigned d = 0; d < x.n_elem; d++)
         if (new_x(d) > box_size(d) / 2)
@@ -22,7 +22,7 @@ arma::vec PeriodicBoundaryConditions::wrap_vector(arma::vec const &x) {
     return new_x;
 }
 
-arma::mat PeriodicBoundaryConditions::wrap_coordinates(arma::mat const &x) {
+arma::mat PeriodicBoundaryConditions::wrap_coordinates(arma::mat const &x) const {
     auto new_x = x;
     auto com   = arma::mean(x, 0);
     for (unsigned a = 0; a < x.n_rows; a++)
@@ -30,7 +30,7 @@ arma::mat PeriodicBoundaryConditions::wrap_coordinates(arma::mat const &x) {
     return new_x;
 }
 
-arma::mat PeriodicBoundaryConditions::center_box(arma::mat const &x) {
+arma::mat PeriodicBoundaryConditions::center_box(arma::mat const &x) const {
     arma::mat new_x = x;
     auto      com   = arma::mean(x, 0);
     for (unsigned a = 0; a < x.n_rows; a++)

@@ -13,7 +13,7 @@ class WignerPosition : public Move {
 
 public:
     void setup(pt::ptree::value_type node, double beta_, arma::vec mass_) override;
-    void operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) override;
+    void operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) const override;
 };
 
 REGISTER_TYPE_GENERAL(WignerPosition, Move)

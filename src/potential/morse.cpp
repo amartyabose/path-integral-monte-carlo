@@ -8,7 +8,7 @@ void Morse::setup(pt::ptree node) {
     cutoff_radius = node.get<double>("cutoff_radius", -1.);
 }
 
-double Morse::operator()(arma::mat const &x, unsigned index) {
+double Morse::operator()(arma::mat const &x, unsigned index) const {
     arma::vec disp     = bc->wrap_vector(x.row(index));
     double    dist     = arma::norm(disp);
     double    exp_dist = (1. - std::exp(-alpha * (dist - rmin)));
@@ -16,7 +16,7 @@ double Morse::operator()(arma::mat const &x, unsigned index) {
     return pe;
 }
 
-std::complex<double> Morse::operator()(arma::cx_mat const &x) {
+std::complex<double> Morse::operator()(arma::cx_mat const &x) const {
     std::complex<double> pe = 0;
     for (unsigned atom = 0; atom < x.n_rows; atom++) {
         std::complex<double> exp_dist = (1. - std::exp(-alpha * (x(0, 0) - rmin)));

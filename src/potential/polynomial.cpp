@@ -14,7 +14,7 @@ void PolynomialPotential::setup(pt::ptree node) {
         coeffs.push_back(boost::lexical_cast<double>(coeff_vec[i]));
 }
 
-double PolynomialPotential::operator()(arma::mat const &x, unsigned index) {
+double PolynomialPotential::operator()(arma::mat const &x, unsigned index) const {
     double pe = coeffs[0];
     for (unsigned d = 0; d < x.n_cols; d++) {
         double dist = x(index, d);
@@ -27,7 +27,7 @@ double PolynomialPotential::operator()(arma::mat const &x, unsigned index) {
     return pe;
 }
 
-std::complex<double> PolynomialPotential::operator()(arma::cx_mat const &x) {
+std::complex<double> PolynomialPotential::operator()(arma::cx_mat const &x) const {
     std::complex<double> pe = coeffs[0];
     for (unsigned atom = 0; atom < x.n_rows; atom++) {
         for (unsigned d = 0; d < x.n_cols; d++) {

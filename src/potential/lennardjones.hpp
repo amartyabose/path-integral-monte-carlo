@@ -10,10 +10,10 @@ class LennardJones : public Potential {
 public:
     void setup(pt::ptree node) override;
 
-    double               operator()(arma::mat const &x, unsigned index) override;
-    std::complex<double> operator()(arma::cx_mat const &x) override { return 0; }
+    double               operator()(arma::mat const &x, unsigned index) const override;
+    std::complex<double> operator()(arma::cx_mat const &x) const override { return 0; }
 
-    arma::mat derivative(arma::mat const &x) override;
+    arma::mat derivative(arma::mat const &x) const override;
 };
 
 REGISTER_TYPE_GENERAL(LennardJones, Potential)

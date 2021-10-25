@@ -28,7 +28,7 @@ class Move {
 public:
     std::vector<std::shared_ptr<Propagator>> propagator;
 
-    unsigned moves_accepted, moves_tried;
+    mutable unsigned moves_accepted, moves_tried;
 
     Move() { moves_accepted = moves_tried = 0; }
 
@@ -36,10 +36,11 @@ public:
 
     virtual void set_beta(arma::vec beta) {}
 
-    virtual void operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) = 0;
-    virtual void check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new);
+    virtual void operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) const = 0;
+    virtual void check_amplitude(std::shared_ptr<Configuration> &conf_old,
+                                 std::shared_ptr<Configuration>  conf_new) const;
     virtual void check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new,
-                                 unsigned index);
+                                 unsigned index) const;
 
     static void                  registerType(const std::string &name, MoveFactory *factory);
     static std::shared_ptr<Move> create(const std::string &name);

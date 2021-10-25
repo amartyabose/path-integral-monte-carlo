@@ -2,10 +2,9 @@
 
 void Translate::setup(pt::ptree::value_type node, double beta_, arma::vec mass_) {
     max_step = node.second.get<double>("length");
-    // arma::ones<arma::mat>(params.get<unsigned>("num_atoms"), params.get<unsigned>("num_dimensions"));
 }
 
-void Translate::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) {
+void Translate::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) const {
     unsigned  dims = conf->num_dims();
     arma::vec step(dims);
     for (unsigned atom = 0; atom < atom_nums.n_rows; atom++) {
@@ -14,7 +13,6 @@ void Translate::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom
 
         std::shared_ptr<Configuration> conf_new(conf->duplicate());
         conf_new->shift(atom_nums(atom), step);
-
         check_amplitude(conf, conf_new, atom);
     }
 }

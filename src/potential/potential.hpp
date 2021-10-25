@@ -24,11 +24,11 @@ class Potential {
 
 public:
     virtual void                 setup(pt::ptree node) = 0;
-    virtual double               operator()(arma::mat const &x);
-    virtual double               operator()(arma::mat const &x, unsigned index) = 0;
-    virtual std::complex<double> operator()(arma::cx_mat const &x)              = 0;
+    virtual double               operator()(arma::mat const &x) const;
+    virtual double               operator()(arma::mat const &x, unsigned index) const = 0;
+    virtual std::complex<double> operator()(arma::cx_mat const &x) const              = 0;
 
-    virtual arma::mat derivative(arma::mat const &x);
+    virtual arma::mat derivative(arma::mat const &x) const;
 
     static void registerType(const std::string &name, PotentialFactory *factory);
 

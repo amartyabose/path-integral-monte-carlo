@@ -133,12 +133,28 @@ void Simulation::setup_logging(boost::optional<pt::ptree &> logging_node) {
     }
 }
 
+void Simulation::get_worm_data(boost::optional<pt::ptree &> worm_node) {
+    if (worm_node) {
+        pt::ptree wn    = worm_node.get();
+        grand_canonical = wn.get<bool>("grand_canonical", false);
+        auto mu         = wn.get_optional<double>("chemical_potential");
+        if (grand_canonical && !mu)
+            throw std::runtime_error("Chemical Potential required for grand canonical calculations.");
+        chemical_potential = mu.get();
+        max_worms          = wn.get<unsigned>("max_worms", 1);
+    } else {
+        grand_canonical = false;
+        max_worms       = 0;
+    }
+}
+
 void Simulation::get_parameters(pt::ptree params) {
     units.setup(params.get_child("units"));
     spdlog::info("System settings.");
     ndimensions = params.get<unsigned>("num_dimensions");
     natoms      = params.get<unsigned>("num_atoms");
     nprops      = params.get<unsigned>("num_propagators");
+    get_worm_data(params.get_child_optional("worm"));
 
     auto beta_ = params.get_optional<double>("beta");
     auto T_    = params.get_optional<double>("temperature");

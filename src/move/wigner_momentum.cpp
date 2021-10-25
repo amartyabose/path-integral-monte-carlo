@@ -6,7 +6,7 @@ void WignerMomentum::setup(pt::ptree::value_type node, double beta_, arma::vec m
     sigma = arma::sqrt(mass / beta);
 }
 
-void WignerMomentum::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) {
+void WignerMomentum::operator()(std::shared_ptr<Configuration> &conf, arma::uvec atom_nums) const {
     unsigned             dimensions     = conf->num_dims();
     WignerConfiguration *wigner_newconf = dynamic_cast<WignerConfiguration *>(conf->duplicate());
     for (unsigned atom = 0; atom < atom_nums.n_rows; atom++) {
@@ -17,7 +17,7 @@ void WignerMomentum::operator()(std::shared_ptr<Configuration> &conf, arma::uvec
 }
 
 void WignerMomentum::check_amplitude(std::shared_ptr<Configuration> &conf_old,
-                                     std::shared_ptr<Configuration>  conf_new) {
+                                     std::shared_ptr<Configuration>  conf_new) const {
     moves_tried++;
 
     WignerConfiguration *wigner_newconf = dynamic_cast<WignerConfiguration *>(conf_new.get());

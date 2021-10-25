@@ -1,6 +1,6 @@
 #include "move.hpp"
 
-void Move::check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new) {
+void Move::check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new) const {
     moves_tried++;
     double new_weight = 1, old_weight = 1;
     for (unsigned p = 0; p < propagator.size(); p++) {
@@ -14,7 +14,7 @@ void Move::check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared
 }
 
 void Move::check_amplitude(std::shared_ptr<Configuration> &conf_old, std::shared_ptr<Configuration> conf_new,
-                           unsigned index) {
+                           unsigned index) const {
     moves_tried++;
     double new_weight = 1, old_weight = 1;
     for (unsigned p = 0; p < propagator.size(); p++) {
